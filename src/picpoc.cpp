@@ -66,7 +66,7 @@ namespace picpoc {
 
     Container::Container (size_t sz) {
         size_t header_size = roundup(sizeof(Header));
-        BOOST_VERIFY(sz % IO_BLOCK_SIZE);
+        BOOST_VERIFY(sz % IO_BLOCK_SIZE == 0);
         BOOST_VERIFY(sz > header_size);
 
         char *memory;
@@ -136,7 +136,7 @@ namespace picpoc {
         return true;
     }
 
-    void Container::pack (char const**pbuf, size_t *psz) const {
+    void Container::pack (char const**pbuf, size_t *psz) {
         size_t header_size = roundup(sizeof(Header));
         size_t sz = roundup(mem_next - mem_begin, IO_BLOCK_SIZE);
 
@@ -167,8 +167,9 @@ namespace picpoc {
         entries->clear();
         for (auto it = begin; it != end; ++it) {
             if (it->status().type() == type) {
-                string const &p = it->path().native();
+                string p = it->path().filename().native();
                 try {
+                    cerr << "Found: " << p << " in " << path.native() << endl;
                     entries->push_back(lexical_cast<int>(p));
                 }
                 catch (...) {
@@ -190,14 +191,14 @@ namespace picpoc {
 
     unique_ptr<Container> InputStream::read () {
         pending.wait();
-        auto ptr = std::move(next);//make_unique<Container>(next_buf, next_size);
+        auto ptr = std::move(container);//make_unique<Container>(next_buf, next_size);
         BOOST_VERIFY(ptr);
         pending = io->schedule(dev, [this]() {this->prefetch();});
         return ptr;
     }
 
     void InputStream::prefetch () {
-        for (unsigned i = 0; i < subs.size(); ++i) {
+        for (unsigned i = 0; i <= subs.size(); ++i) {
             if (!file) {    // open file
                 if (index >= subs.size()) {
                     if (loop) {
@@ -211,11 +212,12 @@ namespace picpoc {
                 ++index;
                 file = make_unique<DirectFile>(path.native(), MODE_READ);
             }
+            BOOST_VERIFY(file);
             try {
                 char *buf;
                 size_t size;
                 file->alloc_read(&buf, &size);
-                next = make_unique<Container>(buf, size);
+                container = make_unique<Container>(buf, size);
                 return;
             }
             catch (EoS const &e) {
@@ -231,18 +233,20 @@ namespace picpoc {
     {
     }
 
-    void OutputStream::write (unique_ptr<Container> c) {
+    void OutputStream::write (unique_ptr<Container> &&c) {
+        //cerr << "STREAM WRITE" << endl;
         if (pending.valid()) {
             pending.wait();
         }
-        prev = std::move(c);
+        container = std::move(c);
         pending = io->schedule(dev, [this]() {this->flush();});
     }
 
     void OutputStream::flush () {
+        //cerr << "STREAM WRITE" << endl;
         char const *buf;
         size_t size;
-        prev->pack(&buf, &size);
+        container->pack(&buf, &size);
         for (unsigned i = 0; i < 2; ++i) {
             if (!file) {    // open file
                 fs::path path(fs::path(root) / lexical_cast<string>(index));
@@ -251,7 +255,7 @@ namespace picpoc {
             }
             try {
                 file->write(buf, size);
-                prev.reset();
+                container.reset();
                 return;
             }
             catch (EoS const &e) {
@@ -271,6 +275,7 @@ namespace picpoc {
         subs.resize(geometry.n_stream);
         for (unsigned i = 0; i < geometry.n_stream; ++i) {
             fs::path sub = root/lexical_cast<string>(i);
+            fs::create_directory(sub);
             subs[i].stream = std::make_unique<OutputStream>(sub.native(), geometry);
             subs[i].offset = 0;
             subs[i].container = make_unique<Container>(geometry.container_size);
@@ -285,9 +290,8 @@ namespace picpoc {
         fs::path root(dir);
         vector<int> ss;
         list_dir(root, fs::directory_file, &ss);
-        subs.resize(subs.size());
+        subs.resize(ss.size());
         for (unsigned i = 0; i < ss.size(); ++i) {
-            cerr << "Found in " << dir << " : " << ss[i];
             fs::path sub = root/lexical_cast<string>(ss[i]);
             subs[i].stream = std::make_unique<InputStream>(sub.native(), loop);
             subs[i].offset = 0;
@@ -300,7 +304,7 @@ namespace picpoc {
             if (subs.empty()) throw EoS();
             try {
                 Sub &sub = subs[next];
-                if (sub.offset >= sub.container->size()) {
+                if (!sub.container || (sub.offset >= sub.container->size())) {
                     // need to load new container
                     sub.container = sub.stream->read();
                     BOOST_VERIFY(sub.container->size());

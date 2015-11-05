@@ -123,7 +123,7 @@ namespace picpoc {
 
         bool add (Record &, size_t max_sz);
 
-        void pack (char const**buf, size_t *sz) const;
+        void pack (char const**buf, size_t *sz);
 
         Container (Container const &) = delete;
         Container& operator= (Container const &) = delete;
@@ -169,13 +169,17 @@ namespace picpoc {
             // return true if one is processed
             // return false if nothing is processed
             bool try_process_one () {
-                std::unique_lock<std::mutex> lock(mutex);
-                if (tasks.empty()) {
-                    cond.wait(lock);
+                packaged_task<void()> task;
+                {
+                    std::unique_lock<std::mutex> lock(mutex);
+                    if (tasks.empty()) {
+                        cond.wait(lock);
+                    }
+                    if (tasks.empty()) return false;
+                    task = std::move(tasks.front());
+                    tasks.pop();
                 }
-                if (tasks.empty()) return false;
-                auto task = std::move(tasks.front());
-                tasks.pop();
+                // std::cerr << "IO exec" << std::endl;
                 task();
                 return true;
             }
@@ -198,6 +202,7 @@ namespace picpoc {
                                 // workers should stop as soon as possible
                                 // when busy becomes false
         void work (Device &dev) { // work on device with ID
+            //std::cerr << "working" << std::endl;
             while (busy) {
                 dev.try_process_one();
             }
@@ -245,10 +250,10 @@ namespace picpoc {
 
     extern IoSched global_io;
 
-    void start_io () {
+    static inline void start_io () {
         global_io.start();
     }
-    void stop_io () {
+    static inline void stop_io () {
         global_io.stop();
     }
 
@@ -338,6 +343,7 @@ namespace picpoc {
         IoSched *io;
         int dev;
         unique_ptr<DirectFile> file;
+        unique_ptr<Container> container;
         future<void> pending;
         unsigned index;
     public:
@@ -354,34 +360,32 @@ namespace picpoc {
             if (pending.valid()) pending.wait();
         }
 
-        virtual unique_ptr<Container> read (); // throws EoS
-        virtual void write (unique_ptr<Container>);
+        virtual unique_ptr<Container> read () = 0; // throws EoS
+        virtual void write (unique_ptr<Container> &&) = 0;
     };
 
     class InputStream: public Stream {
         bool loop;
         vector<int> subs;
 
-        unique_ptr<Container> next;
         void prefetch ();
     public:
         InputStream (string const &, bool loop_, IoSched *io_ = &global_io);
         virtual unique_ptr<Container> read (); // throws EoS
-        virtual void write (unique_ptr<Container>) {
+        virtual void write (unique_ptr<Container> &&) {
             BOOST_VERIFY(0);
         }
     };
 
     class OutputStream: public Stream {
         size_t file_size;
-        unique_ptr<Container> prev;
         void flush ();
     public:
         OutputStream (string const &, Geometry const &, IoSched *io_ = &global_io);
         virtual unique_ptr<Container> read () {
             BOOST_VERIFY(0);
         }
-        virtual void write (unique_ptr<Container>) ;
+        virtual void write (unique_ptr<Container> &&) ;
     };
 
     class DataSet {

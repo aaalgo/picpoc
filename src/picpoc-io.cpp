@@ -21,7 +21,7 @@ namespace picpoc {
         BOOST_VERIFY(r == 0);
         BOOST_VERIFY(buf);
         r = pread(fd, buf, DIRECTORY_STORAGE_SIZE, 0);
-        BOOST_VERIFY(r == 0);
+        BOOST_VERIFY(r == DIRECTORY_STORAGE_SIZE);
         Header header = *reinterpret_cast<Header *>(buf);
         BOOST_VERIFY(header.magic == MAGIC);
         BOOST_VERIFY(header.version == VERSION);
@@ -92,7 +92,7 @@ namespace picpoc {
 
         char *buf;
         int r = posix_memalign(reinterpret_cast<void **>(&buf), IO_BLOCK_SIZE, sz);
-        if (r == 0) {
+        if (r) {
             *pbuf = nullptr;
             *psz = 0;
             BOOST_VERIFY(0);
@@ -100,13 +100,13 @@ namespace picpoc {
         *pbuf = buf;
         *psz = sz;
         r = pread(fd, buf, sz, off);
-        BOOST_VERIFY(r);
+        BOOST_VERIFY(r == sz);
     }
 
     void DirectFile::write (char const *buf, size_t sz) {
         size_t off = dir.append(sz, max_size);
         int r = pwrite(fd, buf, sz, off);
-        BOOST_VERIFY(r == 0);
+        BOOST_VERIFY(r == sz);
     }
 
     IoSched::IoSched () {
@@ -131,6 +131,10 @@ namespace picpoc {
         for (auto const &p: all) {
             lookup[p.first] = c++;
             devices.push_back(std::move(Device()));
+            cerr << "dev " << p.first << endl;
+            for (auto const &s: p.second) {
+                cerr << "\t" << s << endl;
+            }
         }
     }
 
