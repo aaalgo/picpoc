@@ -8,11 +8,10 @@
 
 namespace picpoc {
 
-    using namespace std;
     using boost::lexical_cast;
     namespace fs = boost::filesystem;
 
-    IoSched global_io;
+    IoSched *global_io = nullptr;
 
     template<typename T> constexpr
     T const& const_max(T const& a, T const& b) {
@@ -60,7 +59,7 @@ namespace picpoc {
         memcpy(buf, extra, extra_size);
         saved->extra = buf;
         buf += extra_size;
-        fill(buf, end, char(0));
+        std::fill(buf, end, char(0));
         return end;
     }
 
@@ -145,8 +144,8 @@ namespace picpoc {
         char *pack_end = mem_begin + sz;
         BOOST_VERIFY(pack_end <= mem_end);
 
-        fill(mem_begin, data_begin, char(0));  // ensure we fill all the gaps
-        fill(data_end, pack_end, char(0));
+        std::fill(mem_begin, data_begin, char(0));  // ensure we fill all the gaps
+        std::fill(data_end, pack_end, char(0));
 
         Header header;
         header.magic = MAGIC;
@@ -172,7 +171,7 @@ namespace picpoc {
                     entries->push_back(lexical_cast<int>(p));
                 }
                 catch (...) {
-                    cerr << "Cannot parse " << path << " " << p << endl;
+                    LOG(WARNING) << "Cannot parse " << path << " " << p;
                 }
             }
         }

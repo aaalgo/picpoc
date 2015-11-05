@@ -16,6 +16,7 @@ Geometry LARGE = {20, 28 * GB / 10, 200 * MB};
 
 int main (int argc, char *argv[]) {
     google::InitGoogleLogging(argv[0]);
+
     unsigned N = 1000000;
     int r = system("rm -rf test-dataset");
     BOOST_VERIFY(r == 0);

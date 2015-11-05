@@ -12,8 +12,7 @@
 #include "picpoc.h"
 
 namespace picpoc {
-
-    using namespace std;
+    using std::ifstream;
 
     void DirectFile::Directory::read (int fd) {
         char *buf;
@@ -131,9 +130,8 @@ namespace picpoc {
         for (auto const &p: all) {
             lookup[p.first] = c++;
             devices.push_back(new Device());
-            cerr << "dev " << p.first << endl;
             for (auto const &s: p.second) {
-                cerr << "\t" << s << endl;
+                LOG(INFO) << "Found mount " << s << " on device with MAJOR=" << p.first << '.';
             }
         }
     }

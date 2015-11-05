@@ -15,14 +15,7 @@
 #include <glog/logging.h>
 
 namespace picpoc {
-#ifdef make_unique
-#else
-template<typename T, typename... Args>
-std::unique_ptr<T> make_unique(Args&&... args)
-{
-    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
-#endif
+
 
     using std::string;
     using std::map;
@@ -35,6 +28,15 @@ std::unique_ptr<T> make_unique(Args&&... args)
     using std::queue;
     using std::unique_ptr;
     using std::function;
+#if __cplusplus < 201300
+    template<typename T, typename... Args>
+    std::unique_ptr<T> make_unique(Args&&... args)
+    {
+        return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+    }
+#else
+    using std::make_unique;
+#endif
 
     /// Essential meta data of an image
     struct __attribute__((__packed__)) Meta { 
@@ -256,13 +258,16 @@ std::unique_ptr<T> make_unique(Args&&... args)
         IoSched& operator= (IoSched const &) = delete;
     };
 
-    extern IoSched global_io;
+    extern IoSched *global_io;
 
     static inline void start_io () {
-        global_io.start();
+        global_io = new IoSched();
+        CHECK_NOTNULL(global_io);
+        global_io->start();
     }
     static inline void stop_io () {
-        global_io.stop();
+        global_io->stop();
+        delete global_io;
     }
 
 
@@ -378,7 +383,7 @@ std::unique_ptr<T> make_unique(Args&&... args)
 
         void prefetch ();
     public:
-        InputStream (string const &, bool loop_, IoSched *io_ = &global_io);
+        InputStream (string const &, bool loop_, IoSched *io_ = global_io);
         virtual unique_ptr<Container> read (); // throws EoS
         virtual void write (unique_ptr<Container> &&) {
             BOOST_VERIFY(0);
@@ -389,7 +394,7 @@ std::unique_ptr<T> make_unique(Args&&... args)
         size_t file_size;
         void flush ();
     public:
-        OutputStream (string const &, Geometry const &, IoSched *io_ = &global_io);
+        OutputStream (string const &, Geometry const &, IoSched *io_ = global_io);
         virtual unique_ptr<Container> read () {
             BOOST_VERIFY(0);
         }
