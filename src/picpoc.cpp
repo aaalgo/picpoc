@@ -169,7 +169,6 @@ namespace picpoc {
             if (it->status().type() == type) {
                 string p = it->path().filename().native();
                 try {
-                    cerr << "Found: " << p << " in " << path.native() << endl;
                     entries->push_back(lexical_cast<int>(p));
                 }
                 catch (...) {
