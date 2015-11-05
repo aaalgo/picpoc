@@ -129,7 +129,9 @@ namespace picpoc {
         unsigned c = 0;
         for (auto const &p: all) {
             lookup[p.first] = c++;
-            devices.push_back(new Device());
+            Device *ptr = new Device();
+            CHECK_NOTNULL(ptr);
+            devices.push_back(ptr);
             for (auto const &s: p.second) {
                 LOG(INFO) << "Found mount " << s << " on device with MAJOR=" << p.first << '.';
             }
