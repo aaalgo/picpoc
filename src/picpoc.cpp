@@ -275,7 +275,7 @@ namespace picpoc {
         for (unsigned i = 0; i < geometry.n_stream; ++i) {
             fs::path sub = root/lexical_cast<string>(i);
             fs::create_directory(sub);
-            subs[i].stream = std::make_unique<OutputStream>(sub.native(), geometry);
+            subs[i].stream = make_unique<OutputStream>(sub.native(), geometry);
             subs[i].offset = 0;
             subs[i].container = make_unique<Container>(geometry.container_size);
         }
@@ -292,7 +292,7 @@ namespace picpoc {
         subs.resize(ss.size());
         for (unsigned i = 0; i < ss.size(); ++i) {
             fs::path sub = root/lexical_cast<string>(ss[i]);
-            subs[i].stream = std::make_unique<InputStream>(sub.native(), loop);
+            subs[i].stream = make_unique<InputStream>(sub.native(), loop);
             subs[i].offset = 0;
         }
         BOOST_VERIFY(subs.size());

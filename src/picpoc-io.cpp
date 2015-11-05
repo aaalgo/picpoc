@@ -130,7 +130,7 @@ namespace picpoc {
         unsigned c = 0;
         for (auto const &p: all) {
             lookup[p.first] = c++;
-            devices.push_back(std::move(Device()));
+            devices.push_back(new Device());
             cerr << "dev " << p.first << endl;
             for (auto const &s: p.second) {
                 cerr << "\t" << s << endl;

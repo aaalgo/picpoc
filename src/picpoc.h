@@ -12,8 +12,17 @@
 #include <map>
 #include <condition_variable>
 #include <boost/assert.hpp>
+#include <glog/logging.h>
 
 namespace picpoc {
+#ifdef make_unique
+#else
+template<typename T, typename... Args>
+std::unique_ptr<T> make_unique(Args&&... args)
+{
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+#endif
 
     using std::string;
     using std::map;
@@ -152,10 +161,6 @@ namespace picpoc {
             Device () {
             }
 
-            Device (Device const &) {
-                BOOST_VERIFY(tasks.empty());
-            }
-
             Device& operator= (Device const &) = delete;
 
             future<void> schedule (function<void()> &&fun) {
@@ -194,23 +199,26 @@ namespace picpoc {
         };
 
         map<unsigned, unsigned> lookup;
-        vector<Device> devices;
+        vector<Device *> devices;
         vector<std::thread> threads;
 
         bool busy;              // true after start,
                                 // false after stop
                                 // workers should stop as soon as possible
                                 // when busy becomes false
-        void work (Device &dev) { // work on device with ID
+        void work (Device *dev) { // work on device with ID
             //std::cerr << "working" << std::endl;
             while (busy) {
-                dev.try_process_one();
+                dev->try_process_one();
             }
         }
     public:
         IoSched ();
 
         ~IoSched () {
+            for (auto d: devices) {
+                delete d;
+            }
             BOOST_VERIFY(!busy);
             BOOST_VERIFY(threads.empty());
         }
@@ -219,16 +227,16 @@ namespace picpoc {
 
         std::future<void> schedule (unsigned d, function<void()> &&task) {
             BOOST_VERIFY(d < devices.size());
-            return devices[d].schedule(std::move(task));
+            return devices[d]->schedule(std::move(task));
         }
 
         void start () {
             BOOST_VERIFY(!busy);
             BOOST_VERIFY(threads.empty());
             busy = true;
-            for (auto &dev: devices) {
-                for (unsigned i = 0; i < dev.capacity(); ++i) {
-                    threads.emplace_back([this, &dev](){this->work(dev);});
+            for (auto dev: devices) {
+                for (unsigned i = 0; i < dev->capacity(); ++i) {
+                    threads.emplace_back([this, dev](){this->work(dev);});
                 }
             }
         }
@@ -236,8 +244,8 @@ namespace picpoc {
             BOOST_VERIFY(busy);
             BOOST_VERIFY(threads.size());
             busy = false;
-            for (auto &dev: devices) {
-                dev.notify();
+            for (auto dev: devices) {
+                dev->notify();
             }
             for (auto &th: threads) {
                 th.join();
@@ -288,7 +296,7 @@ namespace picpoc {
                 uint32_t padding;
             };
             static_assert(HEADER_ALIGN % alignof(Header) == 0, "alignment");
-            static_assert(sizeof(Header) + MAX_DIRECTORY * sizeof(uint64_t) <= DIRECTORY_STORAGE_SIZE, "capacity");
+            static_assert(sizeof(Header) + MAX_DIRECTORY * sizeof(uint64_t) <= DirectFile::DIRECTORY_STORAGE_SIZE, "capacity");
         public:
             void read (int fd);
             void write (int fd) const;
@@ -298,7 +306,7 @@ namespace picpoc {
                     return std::make_pair(at(idx-1), at(idx));
                 }
                 else {  // first container starts after the directory
-                    return std::make_pair(DIRECTORY_STORAGE_SIZE, at(idx));
+                    return std::make_pair(int64_t(DirectFile::DIRECTORY_STORAGE_SIZE), at(idx));
                 }
             }
 
