@@ -166,10 +166,12 @@ namespace picpoc {
             Device& operator= (Device const &) = delete;
 
             future<void> schedule (function<void()> &&fun) {
-                std::unique_lock<std::mutex> lock(mutex);
                 packaged_task<void()> task(fun);
                 future<void> r = task.get_future();
-                tasks.push(std::move(task));
+                {
+                    std::unique_lock<std::mutex> lock(mutex);
+                    tasks.push(std::move(task));
+                }
                 cond.notify_all();
                 return r;
             }
@@ -210,6 +212,7 @@ namespace picpoc {
                                 // when busy becomes false
         void work (Device *dev) { // work on device with ID
             //std::cerr << "working" << std::endl;
+            CHECK_NOTNULL(dev);
             while (busy) {
                 dev->try_process_one();
             }
@@ -242,6 +245,7 @@ namespace picpoc {
                 }
             }
         }
+
         void stop () {
             BOOST_VERIFY(busy);
             BOOST_VERIFY(threads.size());
@@ -261,7 +265,7 @@ namespace picpoc {
     extern IoSched *global_io;
 
     static inline void start_io () {
-        global_io = new IoSched();
+        global_io = new IoSched;
         CHECK_NOTNULL(global_io);
         global_io->start();
     }

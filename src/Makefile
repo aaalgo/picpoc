@@ -1,9 +1,9 @@
 CC=g++
 CXX=g++
-CFLAGS += -g 
-CXXFLAGS += -Wall -std=c++1y -fopenmp -g -pthread
+CFLAGS += -g -O0
+CXXFLAGS += -Wall -std=c++1y -fopenmp -g -O0 -pthread
 LDFLAGS += -static
-LDLIBS += -lopencv_features2d -lopencv_imgproc -lopencv_imgcodecs -lopencv_flann -lopencv_core -lopencv_hal -lIlmImf -lippicv -lboost_timer -lboost_chrono -lboost_program_options -lboost_thread -lboost_filesystem -lboost_system -lopenblas -ljpeg -ltiff -lpng -ljasper -lwebp -lglog -lgflags -lunwind -lpthread -lz -lm -lrt -ldl
+LDLIBS += -lopencv_features2d -lopencv_imgproc -lopencv_imgcodecs -lopencv_flann -lopencv_core -lopencv_hal -lIlmImf -lippicv -lboost_timer -lboost_chrono -lboost_program_options -lboost_thread -lboost_filesystem -lboost_system -lopenblas -ljpeg -ltiff -lpng -ljasper -lwebp -lglog -lgflags -lunwind -llzma -lz -lm -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -lrt -ldl
 
 PROGS = test 
 

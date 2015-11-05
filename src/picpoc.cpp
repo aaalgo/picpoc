@@ -48,7 +48,7 @@ namespace picpoc {
         header.meta = meta;
         header.image_size = image_size;
         header.extra_size = extra_size;
-        BOOST_VERIFY(header.check());
+        CHECK(header.check());
         char *begin = buf;
         char *end = begin + storage_size();
         *reinterpret_cast<Header *>(buf) = header;
@@ -65,13 +65,13 @@ namespace picpoc {
 
     Container::Container (size_t sz) {
         size_t header_size = roundup(sizeof(Header));
-        BOOST_VERIFY(sz % IO_BLOCK_SIZE == 0);
-        BOOST_VERIFY(sz > header_size);
+        CHECK_EQ(sz % IO_BLOCK_SIZE, 0);
+        CHECK(sz > header_size);
 
         char *memory;
         int r = posix_memalign(reinterpret_cast<void **>(&memory), IO_BLOCK_SIZE, sz);
-        BOOST_VERIFY(r == 0);
-        BOOST_VERIFY(memory);
+        CHECK_EQ(r, 0);
+        CHECK_NOTNULL(memory);
         mem_begin = memory;
         mem_end = memory + sz;
         mem_next = mem_begin + header_size;
@@ -83,16 +83,16 @@ namespace picpoc {
 
     Container::Container (char *memory, size_t sz, size_t extend) {
         size_t header_size = roundup(sizeof(Header));
-        BOOST_VERIFY(is_aligned(memory, IO_BLOCK_SIZE));   //TODO: if not aligned, allocate and copy
-        BOOST_VERIFY(sz % IO_BLOCK_SIZE == 0);
-        BOOST_VERIFY(sz >= header_size);
+        CHECK(is_aligned(memory, IO_BLOCK_SIZE));   //TODO: if not aligned, allocate and copy
+        CHECK_EQ(sz % IO_BLOCK_SIZE, 0);
+        CHECK(sz >= header_size);
         if (extend > sz) {
-            BOOST_VERIFY(extend % IO_BLOCK_SIZE);
-            BOOST_VERIFY(extend > header_size);
+            CHECK(extend % IO_BLOCK_SIZE);
+            CHECK(extend > header_size);
             char *m;
             int r = posix_memalign(reinterpret_cast<void **>(&m), IO_BLOCK_SIZE, extend);
-            BOOST_VERIFY(r == 0);
-            BOOST_VERIFY(m);
+            CHECK_EQ(r, 0);
+            CHECK_NOTNULL(m);
             memcpy(m, memory, sz);
             free(memory);
             memory = m;
@@ -104,17 +104,17 @@ namespace picpoc {
         char *buf = mem_begin;
         Header header;
         header = *reinterpret_cast<Header const *>(buf);
-        BOOST_VERIFY(header.check());
+        CHECK(header.check());
 
         buf += header_size;
 
         uint32_t crc = boost::crc<32, 0x04C11DB7, 0xFFFFFFFF, 0xFFFFFFFF, true, true>(reinterpret_cast<void const *>(buf), header.data_size);
         // TODO: raise instead of VERIFY
-        BOOST_VERIFY(crc == header.data_crc);
+        CHECK_EQ(crc, header.data_crc);
 
         Record rec;
         for (unsigned i = 0; i < header.count; ++i) {
-            BOOST_VERIFY(buf < mem_end);
+            CHECK(buf < mem_end);
             buf = const_cast<char *>(rec.load(buf));
             push_back(rec);
         }
@@ -131,7 +131,7 @@ namespace picpoc {
         Record rec;
         mem_next = r.save(mem_next, &rec);
         push_back(rec);
-        BOOST_VERIFY(new_next == mem_next);
+        CHECK_EQ(new_next, mem_next);
         return true;
     }
 
@@ -142,7 +142,7 @@ namespace picpoc {
         char *data_begin = mem_begin + header_size;
         char *data_end = mem_next;
         char *pack_end = mem_begin + sz;
-        BOOST_VERIFY(pack_end <= mem_end);
+        CHECK(pack_end <= mem_end);
 
         std::fill(mem_begin, data_begin, char(0));  // ensure we fill all the gaps
         std::fill(data_end, pack_end, char(0));
@@ -160,7 +160,7 @@ namespace picpoc {
 
     void list_dir (fs::path const &path, fs::file_type type, vector<int> *entries) {
         if (!fs::is_directory(path)) {
-            BOOST_VERIFY(0);
+            CHECK(0);
         }
         fs::directory_iterator begin(path), end;
         entries->clear();
@@ -183,14 +183,14 @@ namespace picpoc {
         loop(loop_)
     {
         list_dir(fs::path(root), fs::regular_file, &subs);
-        BOOST_VERIFY(subs.size());
+        CHECK(subs.size());
         pending = io->schedule(dev, [this](){this->prefetch();});
     }
 
     unique_ptr<Container> InputStream::read () {
         pending.wait();
         auto ptr = std::move(container);//make_unique<Container>(next_buf, next_size);
-        BOOST_VERIFY(ptr);
+        CHECK(ptr);
         pending = io->schedule(dev, [this]() {this->prefetch();});
         return ptr;
     }
@@ -210,7 +210,7 @@ namespace picpoc {
                 ++index;
                 file = make_unique<DirectFile>(path.native(), MODE_READ);
             }
-            BOOST_VERIFY(file);
+            CHECK(file);
             try {
                 char *buf;
                 size_t size;
@@ -222,7 +222,7 @@ namespace picpoc {
                 file.reset();
             }
         }
-        BOOST_VERIFY(0);
+        CHECK(0);
     }
 
     OutputStream::OutputStream (string const &path, Geometry const &geometry, IoSched *io_)
@@ -260,7 +260,7 @@ namespace picpoc {
                 file.reset();
             }
         }
-        BOOST_VERIFY(0);
+        CHECK(0);
     }
 
     DataSet::DataSet (string const &dir, Geometry const &geometry_)
@@ -278,7 +278,7 @@ namespace picpoc {
             subs[i].offset = 0;
             subs[i].container = make_unique<Container>(geometry.container_size);
         }
-        BOOST_VERIFY(subs.size());
+        CHECK(subs.size());
     }
 
     DataSet::DataSet (string const &dir, bool loop)
@@ -294,7 +294,7 @@ namespace picpoc {
             subs[i].stream = make_unique<InputStream>(sub.native(), loop);
             subs[i].offset = 0;
         }
-        BOOST_VERIFY(subs.size());
+        CHECK(subs.size());
     }
 
     void DataSet::read (Record *rec) {
@@ -305,7 +305,7 @@ namespace picpoc {
                 if (!sub.container || (sub.offset >= sub.container->size())) {
                     // need to load new container
                     sub.container = sub.stream->read();
-                    BOOST_VERIFY(sub.container->size());
+                    CHECK(sub.container->size());
                     sub.offset = 0;
                 }
                 *rec = sub.container->at(sub.offset);
