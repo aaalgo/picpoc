@@ -32,6 +32,7 @@ int main (int argc, char *argv[]) {
     rec.image_size = image.size();
     rec.extra = &extra[0];
     rec.extra_size = extra.size();
+    Container::check_crc = false;
     {
         cerr << "Writing..." << endl;
         boost::timer::auto_cpu_timer t;

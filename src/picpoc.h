@@ -16,7 +16,6 @@
 
 namespace picpoc {
 
-
     using std::string;
     using std::map;
     using std::future;
@@ -392,6 +391,8 @@ namespace picpoc {
 
         void prefetch ();
     public:
+        // prefetch only controls prefetching the first container
+        // after that, prefetching is always done.
         InputStream (string const &, bool loop_, bool prefetch_, IoSched *io_ = global_io);
         // read will throw EoS
         // a read operation after EoS will start reading from the beginning
