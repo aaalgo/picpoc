@@ -12,12 +12,12 @@ size_t KB = 1024;
 size_t MB = KB * KB;
 size_t GB = MB * KB;
 
-Geometry LARGE = {20, 28 * GB / 10, 200 * MB};
+Geometry LARGE = {10, 28 * GB / 10, 200 * MB};
 
 int main (int argc, char *argv[]) {
     google::InitGoogleLogging(argv[0]);
 
-    unsigned N = 1000000;
+    unsigned N = 500000;
     int r = system("rm -rf test-dataset");
     BOOST_VERIFY(r == 0);
     start_io();
@@ -45,7 +45,7 @@ int main (int argc, char *argv[]) {
         }
     }
     {
-        cerr << "Reading..." << endl;
+        cerr << "Reading with round robin..." << endl;
         boost::timer::auto_cpu_timer t;
         DataSet dataset("test-dataset", false);
         boost::progress_display progress(N, cerr);
@@ -55,5 +55,22 @@ int main (int argc, char *argv[]) {
             ++progress;
         }
     }
+#if 0
+    {
+        cerr << "Reading sequentially..." << endl;
+        boost::timer::auto_cpu_timer t;
+        DataSet dataset("test-dataset", false);
+        boost::progress_display progress(N, cerr);
+        vector<int> count(N, 0);
+        for (unsigned i = 0; i < N; ++i) {
+            dataset.read(&rec, false);
+            ++count[rec.meta.serial];
+            ++progress;
+        }
+        for (auto const &v: count) {
+            CHECK(v == 1);
+        }
+    }
+#endif
     stop_io();
 }

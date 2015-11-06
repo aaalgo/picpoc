@@ -29,6 +29,7 @@ int main (int argc, char *argv[]) {
     ("in", po::value(&in_path), "")
     ("batch", po::value(&batch)->default_value(200000), "")
     ("decode", "")
+    ("no-crc", "")
     ;   
     
     po::positional_options_description p;
@@ -46,6 +47,10 @@ int main (int argc, char *argv[]) {
 
     decode = vm.count("decode");
 
+    if (vm.count("no-crc")) {
+        Container::check_crc = false;
+    }
+
     start_io();
     {
         DataSet dataset(in_path, true);
@@ -55,8 +60,9 @@ int main (int argc, char *argv[]) {
                 Record rec;
                 dataset.read(&rec);
                 if (decode) {
-                    cv::Mat buffer(1, rec.image_size, CV_8U, const_cast<void *>(reinterpret_cast<void const *>(&rec.image)));
+                    cv::Mat buffer(1, rec.image_size, CV_8U, const_cast<void *>(reinterpret_cast<void const *>(rec.image)));
                     cv::Mat image = cv::imdecode(buffer, cv::IMREAD_COLOR);
+                    LOG_IF(WARNING, image.total() == 0) << "failed to decode image";
                 }
             }
             cout << batch << " images read." << endl;

@@ -115,6 +115,7 @@ namespace picpoc {
         char *mem_next;
         char *mem_end;
     public:
+        static bool check_crc;
         using vector<Record>::size;
         using vector<Record>::operator[];
         using vector<Record>::at;
@@ -134,7 +135,7 @@ namespace picpoc {
 
         bool add (Record &, size_t max_sz);
 
-        void pack (char const**buf, size_t *sz);
+        void pack (char **buf, size_t *sz);
 
         Container (Container const &) = delete;
         Container& operator= (Container const &) = delete;
@@ -360,7 +361,9 @@ namespace picpoc {
         IoSched *io;
         int dev;
         unique_ptr<DirectFile> file;
-        unique_ptr<Container> container;
+        char *buf;
+        size_t buf_size;
+        //unique_ptr<Container> container;
         future<void> pending;
         unsigned index;
     public:
@@ -369,6 +372,8 @@ namespace picpoc {
             : root(root_),
             io(io_),
             dev(io ? io->identify(root): 0), 
+            buf(nullptr),
+            buf_size(0),
             index(0)
         {
         }

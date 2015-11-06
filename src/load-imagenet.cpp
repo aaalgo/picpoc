@@ -82,7 +82,6 @@ int main (int argc, char *argv[]) {
         DataSet dataset(out_path, geometry);
         std::atomic<unsigned> serial(0);
         std::atomic<unsigned> done(0);
-        char const *extra = "";
 #pragma omp parallel for
         for (unsigned i = 0; i < tar_paths.size(); ++i) {
             Record rec;

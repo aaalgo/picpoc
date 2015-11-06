@@ -63,6 +63,8 @@ namespace picpoc {
         return end;
     }
 
+    bool Container::check_crc = true;
+
     Container::Container (size_t sz) {
         size_t header_size = roundup(sizeof(Header));
         CHECK_EQ(sz % IO_BLOCK_SIZE, 0);
@@ -108,9 +110,11 @@ namespace picpoc {
 
         buf += header_size;
 
-        uint32_t crc = boost::crc<32, 0x04C11DB7, 0xFFFFFFFF, 0xFFFFFFFF, true, true>(reinterpret_cast<void const *>(buf), header.data_size);
-        // TODO: raise instead of VERIFY
-        CHECK_EQ(crc, header.data_crc);
+        if (check_crc) {
+            uint32_t crc = boost::crc<32, 0x04C11DB7, 0xFFFFFFFF, 0xFFFFFFFF, true, true>(reinterpret_cast<void const *>(buf), header.data_size);
+            // TODO: raise instead of VERIFY
+            CHECK_EQ(crc, header.data_crc);
+        }
 
         Record rec;
         for (unsigned i = 0; i < header.count; ++i) {
@@ -122,7 +126,9 @@ namespace picpoc {
     }
 
     Container::~Container () {
-        free(mem_begin);
+        if (mem_begin) {
+            free(mem_begin);
+        }
     }
 
     bool Container::add (Record &r, size_t max_sz) {
@@ -135,7 +141,8 @@ namespace picpoc {
         return true;
     }
 
-    void Container::pack (char const**pbuf, size_t *psz) {
+    void Container::pack (char **pbuf, size_t *psz) {
+        CHECK_NOTNULL(mem_begin);
         size_t header_size = roundup(sizeof(Header));
         size_t sz = roundup(mem_next - mem_begin, IO_BLOCK_SIZE);
 
@@ -156,6 +163,8 @@ namespace picpoc {
 
         *pbuf = mem_begin;
         *psz = sz;
+        mem_begin = mem_next = mem_end = nullptr;
+        clear();
     }
 
     void list_dir (fs::path const &path, fs::file_type type, vector<int> *entries) {
@@ -184,17 +193,25 @@ namespace picpoc {
     {
         list_dir(fs::path(root), fs::regular_file, &subs);
         CHECK(subs.size());
-        pending = io->schedule(dev, [this](){this->prefetch();});
+        //pending = io->schedule(dev, [this](){this->prefetch();});
     }
 
     unique_ptr<Container> InputStream::read () {
+        if (!pending.valid()) {
+            pending = io->schedule(dev, [this](){this->prefetch();});
+        }
         pending.wait();
-        auto ptr = std::move(container);//make_unique<Container>(next_buf, next_size);
-        if (!ptr) {
+        if (!buf) {
             throw EoS();
         }
+        CHECK(buf_size);
+        char *tmp_buf = buf;
+        size_t tmp_buf_size = buf_size;
+        buf = nullptr;
+        buf_size = 0;
+        // prefetch as soon as possible
         pending = io->schedule(dev, [this]() {this->prefetch();});
-        return ptr;
+        return make_unique<Container>(tmp_buf, tmp_buf_size);
     }
 
     void InputStream::prefetch () {
@@ -214,10 +231,9 @@ namespace picpoc {
             }
             CHECK(file);
             try {
-                char *buf;
-                size_t size;
-                file->alloc_read(&buf, &size);
-                container = make_unique<Container>(buf, size);
+                CHECK(buf == nullptr);
+                CHECK_EQ(buf_size, 0);
+                file->alloc_read(&buf, &buf_size);
                 return;
             }
             catch (EoS const &e) {
@@ -237,16 +253,22 @@ namespace picpoc {
         //cerr << "STREAM WRITE" << endl;
         if (pending.valid()) {
             pending.wait();
+            CHECK_NOTNULL(buf);
+            free(buf);
+            buf = nullptr;
+            buf_size = 0;
         }
-        container = std::move(c);
+        CHECK(buf == nullptr);
+        CHECK_EQ(buf_size, 0);
+        unique_ptr<Container> container = std::move(c);
+        container->pack(&buf, &buf_size);
+        CHECK_NOTNULL(buf);
+        CHECK(buf_size);
         pending = io->schedule(dev, [this]() {this->flush();});
     }
 
     void OutputStream::flush () {
         //cerr << "STREAM WRITE" << endl;
-        char const *buf;
-        size_t size;
-        container->pack(&buf, &size);
         for (unsigned i = 0; i < 2; ++i) {
             if (!file) {    // open file
                 fs::path path(fs::path(root) / lexical_cast<string>(index));
@@ -254,8 +276,7 @@ namespace picpoc {
                 file = make_unique<DirectFile>(path.native(), MODE_WRITE, file_size);
             }
             try {
-                file->write(buf, size);
-                container.reset();
+                file->write(buf, buf_size);
                 return;
             }
             catch (EoS const &e) {
