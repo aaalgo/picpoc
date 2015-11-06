@@ -7,7 +7,7 @@ LDLIBS += -ljson11 -lopencv_features2d -lopencv_imgcodecs -lopencv_imgproc -lope
 
 COMMON = picpoc.o picpoc-io.o
 
-PROGS = load-imagenet unpack-imagenet test
+PROGS = load-imagenet unpack-imagenet load-caffe test bench-read
 
 all:	$(PROGS)
 
@@ -15,7 +15,11 @@ test:	test.o $(COMMON)
 
 load-imagenet:	load-imagenet.o $(COMMON)
 
+load-caffe:	load-caffe.o $(COMMON)
+
 unpack-imagenet:	unpack-imagenet.o $(COMMON)
+
+bench-read:	bench-read.o $(COMMON)
 
 
 clean:

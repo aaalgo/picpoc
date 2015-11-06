@@ -17,8 +17,6 @@ size_t KB = 1024;
 size_t MB = KB * KB;
 size_t GB = MB * KB;
 
-Geometry LARGE = {20, 28 * GB / 10, 200 * MB};
-
 int main (int argc, char *argv[]) {
     google::InitGoogleLogging(argv[0]);
 
@@ -89,8 +87,6 @@ int main (int argc, char *argv[]) {
         for (unsigned i = 0; i < tar_paths.size(); ++i) {
             Record rec;
             rec.meta.label = i;
-            rec.extra = extra;
-            rec.extra_size = 0;
             Tar tar(tar_paths[i]);
             vector<uint8_t> jpeg;
             Tar::posix_header const *header;
