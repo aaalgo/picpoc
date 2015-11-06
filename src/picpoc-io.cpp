@@ -14,6 +14,10 @@
 namespace picpoc {
     using std::ifstream;
 
+    int identify_physical_disk (dev_t dev) {
+        return dev /16;
+    }
+
     void DirectFile::Directory::read (int fd) {
         char *buf;
         int r = posix_memalign(reinterpret_cast<void **>(&buf), IO_BLOCK_SIZE, DIRECTORY_STORAGE_SIZE);
@@ -110,7 +114,7 @@ namespace picpoc {
     }
 
     IoSched::IoSched (): busy(false) {
-        map<unsigned, vector<string>> all;
+        map<int, vector<string>> all;
         ifstream is("/proc/mounts");
         for (;;) {
             string dev, dir, dummy;
@@ -123,8 +127,10 @@ namespace picpoc {
                 int r = stat(dev.c_str(), &st);
                 CHECK_EQ(r, 0);
                 if (!S_ISBLK(st.st_mode)) continue;
-                unsigned dev = major(st.st_rdev);
-                all[dev].push_back(dir);
+                int disk = identify_physical_disk(st.st_rdev);
+                if (disk >= 0) {
+                    all[disk].push_back(dir);
+                }
             }
         }
         unsigned c = 0;
@@ -134,7 +140,7 @@ namespace picpoc {
             CHECK_NOTNULL(ptr);
             devices.push_back(ptr);
             for (auto const &s: p.second) {
-                LOG(INFO) << "Found mount " << s << " on device with MAJOR=" << p.first << '.';
+                LOG(INFO) << "Found mount " << s << " on device with ID=" << p.first << '.';
             }
         }
     }
@@ -143,8 +149,8 @@ namespace picpoc {
         struct stat st;
         int r = stat(path.c_str(), &st);
         CHECK_EQ(r, 0);
-        unsigned dev = major(st.st_dev);
-        auto it = lookup.find(dev);
+        int disk = identify_physical_disk(st.st_dev);
+        auto it = lookup.find(disk);
         CHECK(it != lookup.end());
         return it->second;
     }

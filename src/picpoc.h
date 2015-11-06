@@ -202,7 +202,7 @@ namespace picpoc {
             }
         };
 
-        map<unsigned, unsigned> lookup;
+        map<int, unsigned> lookup;
         vector<Device *> devices;
         vector<std::thread> threads;
 
