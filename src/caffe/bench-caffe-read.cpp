@@ -1,12 +1,10 @@
-#include <atomic>
 #include <iostream>
+#include <boost/timer/timer.hpp>
+#include <boost/program_options.hpp>
 #define CPU_ONLY 1
 #include <caffe/util/db.hpp>
 
 using namespace std;
-using namespace picpoc;
-using json11::Json;
-namespace fs = boost::filesystem;
 
 int main (int argc, char *argv[]) {
     google::InitGoogleLogging(argv[0]);
@@ -37,14 +35,16 @@ int main (int argc, char *argv[]) {
         return 1;
     }
 
-    caffe::DB *db = caffe::db::GetDB("lmdb");
+    caffe::db::DB *db = caffe::db::GetDB("lmdb");
     CHECK_NOTNULL(db);
-    db->open(in_path, caffe::db::READ);
+    db->Open(in_path, caffe::db::READ);
     auto cursor = db->NewCursor();
     cursor->SeekToFirst();
     for (;;) {
         boost::timer::auto_cpu_timer t;
         for (size_t i = 0; i < batch; ++i) {
+            BOOST_VERIFY(cursor->valid());
+            BOOST_VERIFY(cursor->value().size());
             cursor->Next();
         }
         cout << batch << " records read." << endl;
