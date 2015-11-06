@@ -39,6 +39,7 @@ int main (int argc, char *argv[]) {
         DataSet::Locator loc;
         boost::progress_display progress(N, cerr);
         for (unsigned i = 0; i < N; ++i) {
+            rec.meta.serial = i;
             dataset.write(rec, &loc);
             ++progress;
         }
@@ -50,6 +51,7 @@ int main (int argc, char *argv[]) {
         boost::progress_display progress(N, cerr);
         for (unsigned i = 0; i < N; ++i) {
             dataset.read(&rec);
+            BOOST_VERIFY(rec.meta.serial == i);
             ++progress;
         }
     }

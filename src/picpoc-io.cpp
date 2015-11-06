@@ -109,7 +109,7 @@ namespace picpoc {
         CHECK_EQ(r, sz);
     }
 
-    IoSched::IoSched () {
+    IoSched::IoSched (): busy(false) {
         map<unsigned, vector<string>> all;
         ifstream is("/proc/mounts");
         for (;;) {

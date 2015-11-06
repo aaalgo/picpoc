@@ -190,7 +190,9 @@ namespace picpoc {
     unique_ptr<Container> InputStream::read () {
         pending.wait();
         auto ptr = std::move(container);//make_unique<Container>(next_buf, next_size);
-        CHECK(ptr);
+        if (!ptr) {
+            throw EoS();
+        }
         pending = io->schedule(dev, [this]() {this->prefetch();});
         return ptr;
     }
@@ -301,6 +303,9 @@ namespace picpoc {
         for (;;) {
             if (subs.empty()) throw EoS();
             try {
+                if (next >= subs.size()) {
+                    next = 0;
+                }
                 Sub &sub = subs[next];
                 if (!sub.container || (sub.offset >= sub.container->size())) {
                     // need to load new container
@@ -310,7 +315,7 @@ namespace picpoc {
                 }
                 *rec = sub.container->at(sub.offset);
                 ++sub.offset;
-                next = (next + 1) % subs.size();
+                next = next + 1;
                 return;
             }
             catch (EoS const &e) {
