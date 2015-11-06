@@ -187,13 +187,15 @@ namespace picpoc {
         sort(entries->begin(), entries->end());
     }
 
-    InputStream::InputStream (string const &path, bool loop_, IoSched *io_)
+    InputStream::InputStream (string const &path, bool loop_, bool prefetch_, IoSched *io_)
         : Stream(path, io_),
         loop(loop_)
     {
         list_dir(fs::path(root), fs::regular_file, &subs);
         CHECK(subs.size());
-        //pending = io->schedule(dev, [this](){this->prefetch();});
+        if (prefetch_) {
+            pending = io->schedule(dev, [this](){this->prefetch();});
+        }
     }
 
     unique_ptr<Container> InputStream::read () {
@@ -315,7 +317,7 @@ namespace picpoc {
         subs.resize(ss.size());
         for (unsigned i = 0; i < ss.size(); ++i) {
             fs::path sub = root/lexical_cast<string>(ss[i]);
-            subs[i].stream = make_unique<InputStream>(sub.native(), (flags & READ_LOOP) && (flags & READ_RR));
+            subs[i].stream = make_unique<InputStream>(sub.native(), (flags & READ_LOOP) && (flags & READ_RR), flags & READ_RR);
             subs[i].offset = 0;
         }
         CHECK(subs.size());
@@ -345,7 +347,6 @@ namespace picpoc {
             catch (EoS const &e) {
                 // remove stream from list
                 if (flags & READ_LOOP) {
-                    //subs[next].stream->rewind(true);
                     next = next + 1;
                 }
                 else {  // remove that stream

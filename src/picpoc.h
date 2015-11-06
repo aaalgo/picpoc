@@ -392,7 +392,7 @@ namespace picpoc {
 
         void prefetch ();
     public:
-        InputStream (string const &, bool loop_, IoSched *io_ = global_io);
+        InputStream (string const &, bool loop_, bool prefetch_, IoSched *io_ = global_io);
         // read will throw EoS
         // a read operation after EoS will start reading from the beginning
         virtual unique_ptr<Container> read (); // throws EoS

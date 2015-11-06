@@ -12,12 +12,12 @@ size_t KB = 1024;
 size_t MB = KB * KB;
 size_t GB = MB * KB;
 
-Geometry LARGE = {10, 28 * GB / 10, 200 * MB};
+Geometry LARGE = {3, 5 * GB / 10, 20 * MB};
 
 int main (int argc, char *argv[]) {
     google::InitGoogleLogging(argv[0]);
 
-    unsigned N = 500000;
+    unsigned N = 50000;
     int r = system("rm -rf test-dataset");
     BOOST_VERIFY(r == 0);
     start_io();
@@ -44,7 +44,7 @@ int main (int argc, char *argv[]) {
             ++progress;
         }
     }
-    for (unsigned repeat = 2; repeat <= 2; ++repeat) {
+    for (unsigned repeat = 1; repeat <= 2; ++repeat) {
         cerr << "Repeat " << repeat << endl;
         int flags = (repeat > 1) ? READ_LOOP : 0;
         {
