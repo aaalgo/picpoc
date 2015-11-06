@@ -202,6 +202,7 @@ namespace picpoc {
         }
         pending.wait();
         if (!buf) {
+            pending = future<void>();
             throw EoS();
         }
         CHECK(buf_size);
@@ -218,10 +219,8 @@ namespace picpoc {
         for (unsigned i = 0; i <= subs.size(); ++i) {
             if (!file) {    // open file
                 if (index >= subs.size()) {
-                    if (loop) {
-                        index = 0;
-                    }
-                    else {
+                    index = 0;
+                    if (!loop) {
                         throw EoS();
                     }
                 }
@@ -288,6 +287,7 @@ namespace picpoc {
 
     DataSet::DataSet (string const &dir, Geometry const &geometry_)
         : mode(MODE_WRITE),
+        flags(0),
         geometry(geometry_),
         next(0)
     {  // write
@@ -304,8 +304,9 @@ namespace picpoc {
         CHECK(subs.size());
     }
 
-    DataSet::DataSet (string const &dir, bool loop)
+    DataSet::DataSet (string const &dir, int flags_)
         : mode(MODE_READ),
+        flags(flags_),
         next(0)
     { // read
         fs::path root(dir);
@@ -314,7 +315,7 @@ namespace picpoc {
         subs.resize(ss.size());
         for (unsigned i = 0; i < ss.size(); ++i) {
             fs::path sub = root/lexical_cast<string>(ss[i]);
-            subs[i].stream = make_unique<InputStream>(sub.native(), loop);
+            subs[i].stream = make_unique<InputStream>(sub.native(), (flags & READ_LOOP) && (flags & READ_RR));
             subs[i].offset = 0;
         }
         CHECK(subs.size());
@@ -336,15 +337,23 @@ namespace picpoc {
                 }
                 *rec = sub.container->at(sub.offset);
                 ++sub.offset;
-                next = next + 1;
+                if (flags & READ_RR) {
+                    next = next + 1;
+                }
                 return;
             }
             catch (EoS const &e) {
                 // remove stream from list
-                for (unsigned i = next; i + 1 < subs.size(); ++i) {
-                    std::swap(subs[i], subs[i+1]);
+                if (flags & READ_LOOP) {
+                    //subs[next].stream->rewind(true);
+                    next = next + 1;
                 }
-                subs.pop_back();
+                else {  // remove that stream
+                    for (unsigned i = next; i + 1 < subs.size(); ++i) {
+                        std::swap(subs[i], subs[i+1]);
+                    }
+                    subs.pop_back();
+                }
             }
         }
     }

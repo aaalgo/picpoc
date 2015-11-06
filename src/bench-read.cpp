@@ -30,6 +30,8 @@ int main (int argc, char *argv[]) {
     ("batch", po::value(&batch)->default_value(200000), "")
     ("decode", "")
     ("no-crc", "")
+    ("rr", "")
+    ("loop", "")
     ;   
     
     po::positional_options_description p;
@@ -51,9 +53,13 @@ int main (int argc, char *argv[]) {
         Container::check_crc = false;
     }
 
+    int flags = 0;
+    if (vm.count("rr")) flags |= READ_RR;
+    if (vm.count("loop")) flags |= READ_LOOP;
+
     start_io();
     {
-        DataSet dataset(in_path, true);
+        DataSet dataset(in_path, flags);
         for (;;) {
             boost::timer::auto_cpu_timer t;
             for (size_t i = 0; i < batch; ++i) {

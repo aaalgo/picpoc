@@ -44,33 +44,41 @@ int main (int argc, char *argv[]) {
             ++progress;
         }
     }
-    {
-        cerr << "Reading with round robin..." << endl;
-        boost::timer::auto_cpu_timer t;
-        DataSet dataset("test-dataset", false);
-        boost::progress_display progress(N, cerr);
-        for (unsigned i = 0; i < N; ++i) {
-            dataset.read(&rec);
-            BOOST_VERIFY(rec.meta.serial == i);
-            ++progress;
+    for (unsigned repeat = 2; repeat <= 2; ++repeat) {
+        cerr << "Repeat " << repeat << endl;
+        int flags = (repeat > 1) ? READ_LOOP : 0;
+        {
+            cerr << "Reading sequentially..." << endl;
+            boost::timer::auto_cpu_timer t;
+            DataSet dataset("test-dataset", flags);
+            boost::progress_display progress(N * repeat, cerr);
+            vector<int> count(N, 0);
+            for (unsigned r = 0; r < repeat; ++r) {
+                for (unsigned i = 0; i < N; ++i) {
+                    dataset.read(&rec);
+                    ++count[rec.meta.serial];
+                    ++progress;
+                }
+            }
+            for (auto const &v: count) {
+                CHECK(v == repeat);
+            }
+        }
+        {
+            cerr << "Reading with round robin..." << endl;
+            boost::timer::auto_cpu_timer t;
+            DataSet dataset("test-dataset", flags | READ_RR);
+            boost::progress_display progress(N * repeat, cerr);
+            for (unsigned r = 0; r < repeat; ++r) {
+                for (unsigned i = 0; i < N; ++i) {
+                    dataset.read(&rec);
+                    if (r == 0) {
+                        BOOST_VERIFY(rec.meta.serial == i);
+                    }
+                    ++progress;
+                }
+            }
         }
     }
-#if 0
-    {
-        cerr << "Reading sequentially..." << endl;
-        boost::timer::auto_cpu_timer t;
-        DataSet dataset("test-dataset", false);
-        boost::progress_display progress(N, cerr);
-        vector<int> count(N, 0);
-        for (unsigned i = 0; i < N; ++i) {
-            dataset.read(&rec, false);
-            ++count[rec.meta.serial];
-            ++progress;
-        }
-        for (auto const &v: count) {
-            CHECK(v == 1);
-        }
-    }
-#endif
     stop_io();
 }

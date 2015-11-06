@@ -393,6 +393,8 @@ namespace picpoc {
         void prefetch ();
     public:
         InputStream (string const &, bool loop_, IoSched *io_ = global_io);
+        // read will throw EoS
+        // a read operation after EoS will start reading from the beginning
         virtual unique_ptr<Container> read (); // throws EoS
         virtual void write (unique_ptr<Container> &&) {
             BOOST_VERIFY(0);
@@ -410,10 +412,16 @@ namespace picpoc {
         virtual void write (unique_ptr<Container> &&) ;
     };
 
+    enum ReadFlags {
+        READ_LOOP = 1,
+        READ_RR = 2
+    };
+
     class DataSet {
         // meta ...
         // record ...
         IoMode mode;
+        int flags;
         Geometry geometry;
         unsigned next;
         struct Sub {
@@ -434,7 +442,7 @@ namespace picpoc {
         DataSet (string const &, Geometry const &);
 
         // read existing dataset
-        DataSet (string const &, bool loop);
+        DataSet (string const &, int flags_ = 0);
 
         ~DataSet ();
 
