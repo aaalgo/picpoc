@@ -118,6 +118,8 @@ namespace picpoc {
         using vector<Record>::size;
         using vector<Record>::operator[];
         using vector<Record>::at;
+        using vector<Record>::begin;
+        using vector<Record>::end;
 
         size_t packed_size () const {
             return roundup(mem_next - mem_begin, IO_BLOCK_SIZE);
@@ -132,7 +134,7 @@ namespace picpoc {
 
         ~Container ();
 
-        bool add (Record &, size_t max_sz);
+        bool add (Record &);
 
         void pack (char **buf, size_t *sz);
 
@@ -339,15 +341,28 @@ namespace picpoc {
         void open_read (string const &path);
         void open_write  (string const &path);
     public:
+        struct Info {
+            vector<uint64_t> container_sizes;
+        };
+
 
         DirectFile (string const &path, IoMode, size_t max_size_ = std::numeric_limits<size_t>::max());
         ~DirectFile ();
 
         void alloc_read (char **, size_t *);
-        void write (char const *, size_t);
+        void write_free (char *, size_t);
+
+        void write_free (unique_ptr<Container> &&c) {
+            char *buf;
+            size_t sz;
+            c->pack(&buf, &sz);
+            write_free(buf, sz);
+        }
 
         static bool sanity_check (string const &path);
-        static void ping (string const &path);
+        static void shuffle (string const &in_path, string const &out_path);
+        static void load (string const &path, vector<unique_ptr<Container>> *);
+        static void ping (string const &path, Info *info);
     };
 
     /**
@@ -366,6 +381,9 @@ namespace picpoc {
         future<void> pending;
         unsigned index;
     public:
+        struct Info {
+            vector<int> subs;
+        };
 
         Stream (string const &root_, IoSched *io_)
             : root(root_),
@@ -383,6 +401,8 @@ namespace picpoc {
 
         virtual unique_ptr<Container> read () = 0; // throws EoS
         virtual void write (unique_ptr<Container> &&) = 0;
+
+        static void ping (string const &path, Info *info);
     };
 
     class InputStream: public Stream {
@@ -439,6 +459,10 @@ namespace picpoc {
             uint32_t off; // offset within container
         };
 
+        struct Info {
+            vector<int> subs;
+        };
+
         // create an output dataset
         DataSet (string const &, Geometry const &);
 
@@ -459,8 +483,9 @@ namespace picpoc {
             write(r, &dummy);
         }
 
-        static void rotate (string const &input_dir, string const &output_dir);
+        static void rotate (string const &input_dir, string const &output_dir, size_t n_stream = 0);
         static void sample (string const &dir, vector<Locator> *);
+        static void ping (string const &path, Info *info);
     };
 }
 

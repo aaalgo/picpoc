@@ -40,6 +40,7 @@ int main (int argc, char *argv[]) {
         DataSet::Locator loc;
         boost::progress_display progress(N, cerr);
         for (unsigned i = 0; i < N; ++i) {
+            rec.meta.label = i / 1000;
             rec.meta.serial = i;
             dataset.write(rec, &loc);
             ++progress;

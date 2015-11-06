@@ -131,7 +131,7 @@ namespace picpoc {
         }
     }
 
-    bool Container::add (Record &r, size_t max_sz) {
+    bool Container::add (Record &r) {
         char *new_next = mem_next + r.storage_size();
         if (new_next >= mem_end) return false;
         Record rec;
@@ -185,6 +185,10 @@ namespace picpoc {
             }
         }
         sort(entries->begin(), entries->end());
+    }
+
+    void Stream::ping (string const &path, Info *info) {
+        list_dir(fs::path(path), fs::regular_file, &info->subs);
     }
 
     InputStream::InputStream (string const &path, bool loop_, bool prefetch_, IoSched *io_)
@@ -254,10 +258,6 @@ namespace picpoc {
         //cerr << "STREAM WRITE" << endl;
         if (pending.valid()) {
             pending.wait();
-            CHECK_NOTNULL(buf);
-            free(buf);
-            buf = nullptr;
-            buf_size = 0;
         }
         CHECK(buf == nullptr);
         CHECK_EQ(buf_size, 0);
@@ -277,7 +277,9 @@ namespace picpoc {
                 file = make_unique<DirectFile>(path.native(), MODE_WRITE, file_size);
             }
             try {
-                file->write(buf, buf_size);
+                file->write_free(buf, buf_size);
+                buf = nullptr;
+                buf_size = 0;
                 return;
             }
             catch (EoS const &e) {
@@ -363,7 +365,7 @@ namespace picpoc {
         Sub &sub = subs[next];
         next = (next + 1) % subs.size();
         for (;;) {
-            if (sub.container->add(rec, geometry.container_size)) {
+            if (sub.container->add(rec)) {
                 return;
             }
             sub.stream->write(std::move(sub.container));
@@ -380,5 +382,10 @@ namespace picpoc {
             }
         }
     }
+
+    void DataSet::ping (string const &path, Info *info) {
+        list_dir(fs::path(path), fs::directory_file, &info->subs);
+    }
+
 }
 

@@ -107,10 +107,11 @@ namespace picpoc {
         CHECK_EQ(r, sz);
     }
 
-    void DirectFile::write (char const *buf, size_t sz) {
+    void DirectFile::write_free (char *buf, size_t sz) {
         size_t off = dir.append(sz, max_size);
         int r = pwrite(fd, buf, sz, off);
         CHECK_EQ(r, sz);
+        free(buf);
     }
 
     IoSched::IoSched (): busy(false) {
@@ -153,6 +154,11 @@ namespace picpoc {
         auto it = lookup.find(disk);
         CHECK(it != lookup.end());
         return it->second;
+    }
+
+    void DirectFile::ping (string const &path, Info *info) {
+        DirectFile file(path, MODE_READ);
+        info->container_sizes = file.dir;
     }
 }
 
