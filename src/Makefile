@@ -9,23 +9,27 @@ COMMON = picpoc.o picpoc-io.o picpoc-shuffle.o
 
 PROGS = load-imagenet unpack-imagenet load-caffe test bench-read test-shuffle dump-labels test-rotate
 
-all:	$(PROGS)
+all:	libpicpoc.a $(PROGS)
 
-test:	test.o $(COMMON)
+libpicpoc.a:	$(COMMON)
+	ar rvs $@ $^
 
-load-imagenet:	load-imagenet.o $(COMMON)
 
-load-caffe:	load-caffe.o $(COMMON)
+test:	test.o libpicpoc.a
 
-unpack-imagenet:	unpack-imagenet.o $(COMMON)
+load-imagenet:	load-imagenet.o libpicpoc.a
 
-bench-read:	bench-read.o $(COMMON)
+load-caffe:	load-caffe.o libpicpoc.a
 
-test-shuffle:	test-shuffle.o $(COMMON)
+unpack-imagenet:	unpack-imagenet.o libpicpoc.a
 
-test-rotate:	test-rotate.o $(COMMON)
+bench-read:	bench-read.o libpicpoc.a
 
-dump-labels:	dump-labels.o $(COMMON)
+test-shuffle:	test-shuffle.o libpicpoc.a
+
+test-rotate:	test-rotate.o libpicpoc.a
+
+dump-labels:	dump-labels.o libpicpoc.a
 
 clean:
 	rm *.o test
