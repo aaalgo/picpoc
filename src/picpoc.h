@@ -429,13 +429,15 @@ namespace picpoc {
         OutputStream (string const &, Geometry const &, IoSched *io_ = global_io);
         virtual unique_ptr<Container> read () {
             BOOST_VERIFY(0);
+            return unique_ptr<Container>();
         }
         virtual void write (unique_ptr<Container> &&) ;
     };
 
     enum ReadFlags {
         READ_LOOP = 1,
-        READ_RR = 2
+        READ_RR = 2,
+        WRITE_SHUFFLE = 4
     };
 
     class DataSet {
@@ -451,6 +453,7 @@ namespace picpoc {
             unsigned offset;    // only used for reading
         };
         vector<Sub> subs;
+        vector<unsigned> write_index;
     public:
         struct Locator {
             uint32_t sid; // stream id
@@ -464,12 +467,16 @@ namespace picpoc {
         };
 
         // create an output dataset
-        DataSet (string const &, Geometry const &);
+        DataSet (string const &, Geometry const &, int flags_ = 0);
 
         // read existing dataset
         DataSet (string const &, int flags_ = 0);
 
         ~DataSet ();
+
+        size_t streams () const {
+            return subs.size();
+        }
 
         void read (Record *);
         void write (Record &, Locator *loc);
@@ -486,6 +493,7 @@ namespace picpoc {
         static void rotate (string const &input_dir, string const &output_dir, size_t n_stream = 0);
         static void sample (string const &dir, vector<Locator> *);
         static void ping (string const &path, Info *info);
+        static void verify_content (string const &path1, string const &path2, bool io);
     };
 }
 

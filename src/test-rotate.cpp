@@ -33,6 +33,7 @@ int main (int argc, char *argv[]) {
     BOOST_VERIFY(argc == 3);
     google::InitGoogleLogging(argv[0]);
     DataSet::rotate(argv[1], argv[2]);
+    /*
     unordered_map<unsigned, int> x;
     start_io();
     count(argv[1], &x, 1);
@@ -41,4 +42,5 @@ int main (int argc, char *argv[]) {
     for (auto const &p: x) {
         BOOST_VERIFY(p.second == 0);
     }
+    */
 }

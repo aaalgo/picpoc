@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <unordered_map>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
 #include "picpoc.h"
@@ -87,6 +88,30 @@ namespace picpoc {
                 fs::path f_path = st_path/lexical_cast<string>(j);
                 DirectFile::shuffle(v[j], f_path.string());
             }
+        }
+    }
+
+    void count (string const &path, std::unordered_map<unsigned, int> *cnt, int v) {
+        DataSet ds(path);
+        for (;;) {
+            Record rec;
+            try {
+                ds >> rec;
+                (*cnt)[rec.meta.serial] += v;
+            }
+            catch (EoS const &) {
+                break;
+            }
+        }
+    }
+    void DataSet::verify_content (string const &path1, string const &path2, bool io) {
+        std::unordered_map<unsigned, int> x;
+        if (io) start_io();
+        count(path1, &x, 1);
+        count(path2, &x, -1);
+        if (io) stop_io();
+        for (auto const &p: x) {
+            BOOST_VERIFY(p.second == 0);
         }
     }
 }

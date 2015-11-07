@@ -31,5 +31,7 @@ test-rotate:	test-rotate.o libpicpoc.a
 
 dump-labels:	dump-labels.o libpicpoc.a
 
+shuffle:	shuffle.o libpicpoc.a
+
 clean:
 	rm *.o test

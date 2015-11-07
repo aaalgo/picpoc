@@ -289,16 +289,18 @@ namespace picpoc {
         CHECK(0);
     }
 
-    DataSet::DataSet (string const &dir, Geometry const &geometry_)
+    DataSet::DataSet (string const &dir, Geometry const &geometry_, int flags_)
         : mode(MODE_WRITE),
-        flags(0),
+        flags(flags_),
         geometry(geometry_),
         next(0)
     {  // write
         fs::path root(dir);
         fs::create_directory(root);
         subs.resize(geometry.n_stream);
+        write_index.resize(geometry.n_stream);
         for (unsigned i = 0; i < geometry.n_stream; ++i) {
+            write_index[i] = i;
             fs::path sub = root/lexical_cast<string>(i);
             fs::create_directory(sub);
             subs[i].stream = make_unique<OutputStream>(sub.native(), geometry);
@@ -362,8 +364,13 @@ namespace picpoc {
     }
 
     void DataSet::write (Record &rec, Locator *loc) {
-        Sub &sub = subs[next];
-        next = (next + 1) % subs.size();
+        if (next >= subs.size()) {
+            next = 0;
+            if (flags & WRITE_SHUFFLE) {
+                random_shuffle(write_index.begin(), write_index.end());
+            }
+        }
+        Sub &sub = subs[write_index[next++]];
         for (;;) {
             if (sub.container->add(rec)) {
                 return;
