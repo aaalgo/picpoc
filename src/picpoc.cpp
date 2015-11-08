@@ -22,6 +22,23 @@ namespace picpoc {
         size_t sz = sizeof(Record::Header) + image_size + extra_size;
         return roundup(sz, HEADER_ALIGN);
     }
+#ifdef USE_BOOST_CRC
+    uint32_t crc32 (char const *buf, size_t sz) {
+        return boost::crc<32, 0x04C11DB7, 0xFFFFFFFF, 0xFFFFFFFF, true, true>(reinterpret_cast<void const *>(buf), sz);
+    }
+#else
+    uint32_t crc32 (char const *buf, size_t sz) {
+        CHECK(sz % 4 == 0);
+        uint32_t crc = 0x04C11DB7;
+        uint32_t const *begin = reinterpret_cast<uint32_t const *>(buf);
+        sz /= 4;
+        uint32_t const *end = begin + sz;
+        for (auto ptr = begin; ptr < end; ++ptr) {
+            crc = __builtin_ia32_crc32si(crc, *ptr);
+        }
+        return crc;
+    }
+#endif
 
     char const *Record::load (char const *buf) {
         char const *start = buf;
@@ -111,7 +128,7 @@ namespace picpoc {
         buf += header_size;
 
         if (check_crc) {
-            uint32_t crc = boost::crc<32, 0x04C11DB7, 0xFFFFFFFF, 0xFFFFFFFF, true, true>(reinterpret_cast<void const *>(buf), header.data_size);
+            uint32_t crc = crc32(buf, header.data_size);
             // TODO: raise instead of VERIFY
             CHECK_EQ(crc, header.data_crc);
         }
@@ -158,7 +175,7 @@ namespace picpoc {
         header.magic = MAGIC;
         header.count = size();
         header.data_size = data_end - data_begin;
-        header.data_crc = boost::crc<32, 0x04C11DB7, 0xFFFFFFFF, 0xFFFFFFFF, true, true>(reinterpret_cast<void const *>(data_begin), header.data_size);
+        header.data_crc = crc32(data_begin, header.data_size);
         *reinterpret_cast<Header *>(mem_begin) = header;
 
         *pbuf = mem_begin;
