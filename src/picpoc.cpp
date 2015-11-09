@@ -438,5 +438,35 @@ namespace picpoc {
         list_dir(fs::path(path), fs::directory_file, &info->subs);
     }
 
+    DataMux::DataMux (string const &config)
+        : index(0)
+    {
+        {
+            std::ifstream is(config.c_str());
+            Source src;
+            while (is >> src.path >> src.label_base >> src.batch_size) {
+                sources.push_back(std::move(src));
+            }
+        }
+        unsigned total = 0;
+        for (auto &src: sources) {
+            src.dataset = make_unique<DataSet>(src.path, READ_LOOP);
+            total += src.batch_size;
+        }
+        batch.resize(total);
+        load_batch();
+    }
+
+    void DataMux::load_batch () {
+        unsigned off = 0;
+        for (auto &src: sources) {
+            for (unsigned i = 0; i < src.batch_size; ++i) {
+                src.dataset->read(&batch[off++]);
+            }
+        }
+        CHECK(off == batch.size());
+        std::random_shuffle(batch.begin(), batch.end());
+    }
+
 }
 

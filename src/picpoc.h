@@ -489,5 +489,35 @@ namespace picpoc {
         static void ping (string const &path, Info *info);
         static void verify_content (string const &path1, string const &path2, bool io);
     };
+
+    class DataMux {
+        struct Source {
+            string path;
+            int label_base;
+            size_t batch_size;
+            unique_ptr<DataSet> dataset;
+        };
+        vector<Source> sources;
+        vector<Record> batch;
+        unsigned index;
+        void load_batch ();
+    public:
+        /** Config format:
+         * path label_base batch_size
+         * path label_base batch_size
+         * ...
+         */
+        DataMux (string const &conig);
+        void read (Record *rec) {
+            if (index >= batch.size()) {
+                load_batch();
+                index = 0;
+            }
+            *rec = batch[index++];
+        }
+        void operator >> (Record &rec) {
+            read(&rec);
+        }
+    };
 }
 
