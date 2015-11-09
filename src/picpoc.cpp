@@ -12,6 +12,33 @@ namespace picpoc {
     namespace fs = boost::filesystem;
 
     IoSched *global_io = nullptr;
+    atomic<int> global_io_ref(0);
+
+    GlobalIoUser::GlobalIoUser ()
+    {
+        int v = global_io_ref.fetch_add(1);
+        CHECK(v >= 0);
+        if (v == 0) {
+            CHECK(global_io == nullptr);
+            global_io = new IoSched();
+            CHECK_NOTNULL(global_io);
+            global_io->start();
+        }
+    }
+
+    IoSched *GlobalIoUser::io () const {
+        return global_io;
+    }
+
+    GlobalIoUser::~GlobalIoUser () {
+        int v = global_io_ref.fetch_add(-1);
+        CHECK(v >= 1);
+        if (v == 1) {
+            global_io->stop();
+            delete global_io;
+            global_io = nullptr;
+        }
+    }
 
     template<typename T> constexpr
     T const& const_max(T const& a, T const& b) {
@@ -24,12 +51,12 @@ namespace picpoc {
     }
 #ifdef USE_BOOST_CRC
     uint32_t crc32 (char const *buf, size_t sz) {
-        return boost::crc<32, 0x04C11DB7, 0xFFFFFFFF, 0xFFFFFFFF, true, true>(reinterpret_cast<void const *>(buf), sz);
+        return boost::crc_optimal<32, 0x1EDC6F41, 0, 0, true, true>(reinterpret_cast<void const *>(buf), sz);
     }
 #else
     uint32_t crc32 (char const *buf, size_t sz) {
         CHECK(sz % 4 == 0);
-        uint32_t crc = 0x04C11DB7;
+        uint32_t crc = 0x0;
         uint32_t const *begin = reinterpret_cast<uint32_t const *>(buf);
         sz /= 4;
         uint32_t const *end = begin + sz;
@@ -320,7 +347,7 @@ namespace picpoc {
             write_index[i] = i;
             fs::path sub = root/lexical_cast<string>(i);
             fs::create_directory(sub);
-            subs[i].stream = make_unique<OutputStream>(sub.native(), geometry);
+            subs[i].stream = make_unique<OutputStream>(sub.native(), geometry, io());
             subs[i].offset = 0;
             subs[i].container = make_unique<Container>(geometry.container_size);
         }
@@ -338,7 +365,7 @@ namespace picpoc {
         subs.resize(ss.size());
         for (unsigned i = 0; i < ss.size(); ++i) {
             fs::path sub = root/lexical_cast<string>(ss[i]);
-            subs[i].stream = make_unique<InputStream>(sub.native(), (flags & READ_LOOP) && (flags & READ_RR), flags & READ_RR);
+            subs[i].stream = make_unique<InputStream>(sub.native(), (flags & READ_LOOP) && (flags & READ_RR), flags & READ_RR, io());
             subs[i].offset = 0;
         }
         CHECK(subs.size());

@@ -264,18 +264,12 @@ namespace picpoc {
         IoSched& operator= (IoSched const &) = delete;
     };
 
-    extern IoSched *global_io;
-
-    static inline void start_io () {
-        global_io = new IoSched;
-        CHECK_NOTNULL(global_io);
-        global_io->start();
-    }
-    static inline void stop_io () {
-        global_io->stop();
-        delete global_io;
-    }
-
+    class GlobalIoUser {
+    public:
+        GlobalIoUser();
+        ~GlobalIoUser();
+        IoSched *io () const;
+    };
 
     // file structure
     // --------------
@@ -413,7 +407,7 @@ namespace picpoc {
     public:
         // prefetch only controls prefetching the first container
         // after that, prefetching is always done.
-        InputStream (string const &, bool loop_, bool prefetch_, IoSched *io_ = global_io);
+        InputStream (string const &, bool loop_, bool prefetch_, IoSched *io_);
         // read will throw EoS
         // a read operation after EoS will start reading from the beginning
         virtual unique_ptr<Container> read (); // throws EoS
@@ -426,7 +420,7 @@ namespace picpoc {
         size_t file_size;
         void flush ();
     public:
-        OutputStream (string const &, Geometry const &, IoSched *io_ = global_io);
+        OutputStream (string const &, Geometry const &, IoSched *io_);
         virtual unique_ptr<Container> read () {
             BOOST_VERIFY(0);
             return unique_ptr<Container>();
@@ -440,7 +434,7 @@ namespace picpoc {
         WRITE_SHUFFLE = 4
     };
 
-    class DataSet {
+    class DataSet:GlobalIoUser {
         // meta ...
         // record ...
         IoMode mode;

@@ -106,10 +106,8 @@ namespace picpoc {
     }
     void DataSet::verify_content (string const &path1, string const &path2, bool io) {
         std::unordered_map<unsigned, int> x;
-        if (io) start_io();
         count(path1, &x, 1);
         count(path2, &x, -1);
-        if (io) stop_io();
         for (auto const &p: x) {
             BOOST_VERIFY(p.second == 0);
         }

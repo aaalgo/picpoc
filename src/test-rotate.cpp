@@ -35,10 +35,8 @@ int main (int argc, char *argv[]) {
     DataSet::rotate(argv[1], argv[2]);
     /*
     unordered_map<unsigned, int> x;
-    start_io();
     count(argv[1], &x, 1);
     count(argv[2], &x, -1);
-    stop_io();
     for (auto const &p: x) {
         BOOST_VERIFY(p.second == 0);
     }

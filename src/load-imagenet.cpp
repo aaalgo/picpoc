@@ -76,7 +76,6 @@ int main (int argc, char *argv[]) {
     geometry.file_size = round(file_gbs * GB);
     geometry.container_size = round(container_mbs * MB);
 
-    start_io();
     {
         boost::timer::auto_cpu_timer t;
         DataSet dataset(out_path, geometry);
@@ -120,5 +119,4 @@ int main (int argc, char *argv[]) {
             ++done;
         }
     }
-    stop_io();
 }

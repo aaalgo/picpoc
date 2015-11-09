@@ -20,7 +20,6 @@ int main (int argc, char *argv[]) {
     unsigned N = 50000;
     int r = system("rm -rf test-dataset");
     BOOST_VERIFY(r == 0);
-    start_io();
     Record rec;
     string image;
     string extra;
@@ -82,5 +81,4 @@ int main (int argc, char *argv[]) {
             }
         }
     }
-    stop_io();
 }

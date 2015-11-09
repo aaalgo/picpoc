@@ -57,7 +57,6 @@ int main (int argc, char *argv[]) {
     if (vm.count("rr")) flags |= READ_RR;
     if (vm.count("loop")) flags |= READ_LOOP;
 
-    start_io();
     {
         DataSet dataset(in_path, flags);
         for (;;) {
@@ -74,6 +73,5 @@ int main (int argc, char *argv[]) {
             cout << batch << " images read." << endl;
         }
     }
-    stop_io();
 }
 

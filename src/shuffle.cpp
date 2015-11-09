@@ -28,6 +28,7 @@ int main (int argc, char *argv[]) {
     ("streams,s", po::value(&streams)->default_value(20), "")
     ("file-gbs,f", po::value(&file_gbs)->default_value(4), "")
     ("container-mbs,c", po::value(&container_mbs)->default_value(200), "")
+    ("no-crc", "")
     ("verify", "")
     ;   
     
@@ -50,7 +51,10 @@ int main (int argc, char *argv[]) {
     geometry.file_size = round(file_gbs * GB);
     geometry.container_size = round(container_mbs * MB);
 
-    start_io();
+    if (vm.count("no-crc")) {
+        Container::check_crc = false;
+    }
+
     {
         DataSet from(in_path, READ_RR);
         DataSet to(out_path, geometry, WRITE_SHUFFLE);
@@ -68,6 +72,5 @@ int main (int argc, char *argv[]) {
     if (vm.count("verify")) {
         DataSet::verify_content(in_path, out_path, false);
     }
-    stop_io();
 }
 

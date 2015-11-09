@@ -57,7 +57,6 @@ int main (int argc, char *argv[]) {
         }
     }
 
-    start_io();
     {
         boost::timer::auto_cpu_timer t;
         DataSet dataset(in_path);
@@ -79,5 +78,4 @@ int main (int argc, char *argv[]) {
             }
         }
     }
-    stop_io();
 }
