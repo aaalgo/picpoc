@@ -135,6 +135,7 @@ namespace picpoc {
             }
         }
         unsigned c = 0;
+        all[-1].push_back("CPU");
         for (auto const &p: all) {
             lookup[p.first] = c++;
             Device *ptr = new Device;

@@ -12,6 +12,7 @@
 #include <map>
 #include <condition_variable>
 #include <boost/assert.hpp>
+#include <opencv2/core/core.hpp>
 #include <glog/logging.h>
 
 namespace picpoc {
@@ -490,7 +491,12 @@ namespace picpoc {
         static void verify_content (string const &path1, string const &path2, bool io);
     };
 
-    class DataMux {
+    struct Sample {
+        int label;
+        cv::Mat image;
+    };
+
+    class DataMux: GlobalIoUser {
         struct Source {
             string path;
             int label_base;
@@ -498,9 +504,12 @@ namespace picpoc {
             unique_ptr<DataSet> dataset;
         };
         vector<Source> sources;
-        vector<Record> batch;
+        vector<Sample> batch;
+        vector<Sample> batch_prefetch;
         unsigned index;
-        void load_batch ();
+        future<void> pending;
+        void prefetch ();
+        void wait_data ();
     public:
         /** Config format:
          * path label_base batch_size
@@ -508,14 +517,15 @@ namespace picpoc {
          * ...
          */
         DataMux (string const &conig);
-        void read (Record *rec) {
-            if (index >= batch.size()) {
-                load_batch();
-                index = 0;
-            }
+        void read (Sample *rec) {
+            wait_data();
             *rec = batch[index++];
         }
-        void operator >> (Record &rec) {
+        void peek (Sample *rec) {
+            wait_data();
+            *rec = batch[index];
+        }
+        void operator >> (Sample &rec) {
             read(&rec);
         }
     };

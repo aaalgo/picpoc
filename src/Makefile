@@ -7,7 +7,7 @@ LDLIBS += -ljson11 -lopencv_features2d -lopencv_imgcodecs -lopencv_imgproc -lope
 
 COMMON = picpoc.o picpoc-io.o picpoc-shuffle.o
 
-PROGS = load-imagenet unpack-imagenet load-caffe test bench-read test-shuffle dump-labels test-rotate
+PROGS = load-imagenet unpack-imagenet load-caffe test bench-read test-shuffle dump-labels test-rotate bench-mux-read
 
 all:	libpicpoc.a $(PROGS)
 
@@ -24,6 +24,8 @@ load-caffe:	load-caffe.o libpicpoc.a
 unpack-imagenet:	unpack-imagenet.o libpicpoc.a
 
 bench-read:	bench-read.o libpicpoc.a
+
+bench-mux-read:	bench-mux-read.o libpicpoc.a
 
 test-shuffle:	test-shuffle.o libpicpoc.a
 

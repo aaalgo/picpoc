@@ -4,6 +4,7 @@
 #include <boost/crc.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
+#include <opencv2/imgcodecs.hpp>
 #include "picpoc.h"
 
 namespace picpoc {
@@ -453,20 +454,44 @@ namespace picpoc {
             src.dataset = make_unique<DataSet>(src.path, READ_LOOP);
             total += src.batch_size;
         }
+        CHECK(total > 0);
         batch.resize(total);
-        load_batch();
+        batch_prefetch.resize(total);
+        index = batch.size();
+        pending = io()->schedule(-1, [this](){this->prefetch();});
     }
 
-    void DataMux::load_batch () {
+    void DataMux::wait_data () {
+        if (index >= batch.size()) {
+            if (!pending.valid()) {
+                pending = io()->schedule(-1, [this](){this->prefetch();});
+            }
+            pending.wait();
+            batch.swap(batch_prefetch);
+            index = 0;
+            pending = io()->schedule(-1, [this](){this->prefetch();});
+        }
+    }
+
+    void DataMux::prefetch () {
+        Record rec;
         unsigned off = 0;
         for (auto &src: sources) {
             for (unsigned i = 0; i < src.batch_size; ++i) {
-                src.dataset->read(&batch[off++]);
+                for (;;) {
+                    src.dataset->read(&rec);
+                    batch_prefetch[off].label = rec.meta.label;
+                    cv::Mat buffer(1, rec.image_size, CV_8U, const_cast<void *>(reinterpret_cast<void const *>(rec.image)));
+                    batch_prefetch[off].image = cv::imdecode(buffer, cv::IMREAD_COLOR);
+                    if (batch_prefetch[off].image.total()) {
+                        ++off; break;
+                    }
+                    LOG(WARNING) << "Fail to decode image.";
+                }
             }
         }
-        CHECK(off == batch.size());
-        std::random_shuffle(batch.begin(), batch.end());
+        CHECK(off == batch_prefetch.size());
+        std::random_shuffle(batch_prefetch.begin(), batch_prefetch.end());
     }
-
 }
 
