@@ -15,20 +15,6 @@ size_t GB = MB * KB;
 
 Geometry LARGE = {3, 5 * GB / 10, 20 * MB};
 
-void count (string const &path, unordered_map<unsigned, int> *cnt, int v) {
-    DataSet ds(path);
-    for (;;) {
-        Record rec;
-        try {
-            ds >> rec;
-            (*cnt)[rec.meta.serial] += v;
-        }
-        catch (EoS const &) {
-            break;
-        }
-    }
-}
-
 int main (int argc, char *argv[]) {
     BOOST_VERIFY(argc == 3);
     google::InitGoogleLogging(argv[0]);

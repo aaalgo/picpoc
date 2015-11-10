@@ -78,7 +78,7 @@ int main (int argc, char *argv[]) {
 
     {
         boost::timer::auto_cpu_timer t;
-        DataSet dataset(out_path, geometry);
+        DataSet dataset(out_path, geometry, 0);
         std::atomic<unsigned> serial(0);
         std::atomic<unsigned> done(0);
 #pragma omp parallel for

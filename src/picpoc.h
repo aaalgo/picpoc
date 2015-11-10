@@ -213,6 +213,7 @@ namespace picpoc {
                                 // false after stop
                                 // workers should stop as soon as possible
                                 // when busy becomes false
+        int cpu_dev;
         void work (Device *dev) { // work on device with ID
             //std::cerr << "working" << std::endl;
             CHECK_NOTNULL(dev);
@@ -232,6 +233,10 @@ namespace picpoc {
         }
 
         int identify (string const &path);
+
+        unsigned CPU () const {
+            return cpu_dev;
+        }
 
         std::future<void> schedule (unsigned d, function<void()> &&task) {
             BOOST_VERIFY(d < devices.size());

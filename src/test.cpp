@@ -35,7 +35,7 @@ int main (int argc, char *argv[]) {
     {
         cerr << "Writing..." << endl;
         boost::timer::auto_cpu_timer t;
-        DataSet dataset("test-dataset", LARGE);
+        DataSet dataset("test-dataset", LARGE, 0);
         DataSet::Locator loc;
         boost::progress_display progress(N, cerr);
         for (unsigned i = 0; i < N; ++i) {

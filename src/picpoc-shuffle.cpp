@@ -92,7 +92,7 @@ namespace picpoc {
     }
 
     void count (string const &path, std::unordered_map<unsigned, int> *cnt, int v) {
-        DataSet ds(path);
+        DataSet ds(path, 0);
         for (;;) {
             Record rec;
             try {

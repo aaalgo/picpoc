@@ -108,7 +108,7 @@ namespace picpoc {
         return end;
     }
 
-    bool Container::check_crc = true;
+    bool Container::check_crc = false;
 
     Container::Container (size_t sz) {
         size_t header_size = roundup(sizeof(Header));
@@ -458,18 +458,18 @@ namespace picpoc {
         batch.resize(total);
         batch_prefetch.resize(total);
         index = batch.size();
-        pending = io()->schedule(-1, [this](){this->prefetch();});
+        pending = io()->schedule(io()->CPU(), [this](){this->prefetch();});
     }
 
     void DataMux::wait_data () {
         if (index >= batch.size()) {
             if (!pending.valid()) {
-                pending = io()->schedule(-1, [this](){this->prefetch();});
+                pending = io()->schedule(io()->CPU(), [this](){this->prefetch();});
             }
             pending.wait();
             batch.swap(batch_prefetch);
             index = 0;
-            pending = io()->schedule(-1, [this](){this->prefetch();});
+            pending = io()->schedule(io()->CPU(), [this](){this->prefetch();});
         }
     }
 
