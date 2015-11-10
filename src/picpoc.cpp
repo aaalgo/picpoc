@@ -48,7 +48,7 @@ namespace picpoc {
 
     size_t Record::storage_size () const {
         size_t sz = sizeof(Record::Header) + image_size + extra_size;
-        return roundup(sz, HEADER_ALIGN);
+        return round_up(sz, HEADER_ALIGN);
     }
 #ifdef USE_BOOST_CRC
     uint32_t crc32 (char const *buf, size_t sz) {
@@ -111,7 +111,7 @@ namespace picpoc {
     bool Container::check_crc = true;
 
     Container::Container (size_t sz) {
-        size_t header_size = roundup(sizeof(Header));
+        size_t header_size = round_up(sizeof(Header));
         CHECK_EQ(sz % IO_BLOCK_SIZE, 0);
         CHECK(sz > header_size);
 
@@ -129,7 +129,7 @@ namespace picpoc {
     }
 
     Container::Container (char *memory, size_t sz, size_t extend) {
-        size_t header_size = roundup(sizeof(Header));
+        size_t header_size = round_up(sizeof(Header));
         CHECK(is_aligned(memory, IO_BLOCK_SIZE));   //TODO: if not aligned, allocate and copy
         CHECK_EQ(sz % IO_BLOCK_SIZE, 0);
         CHECK(sz >= header_size);
@@ -188,8 +188,8 @@ namespace picpoc {
 
     void Container::pack (char **pbuf, size_t *psz) {
         CHECK_NOTNULL(mem_begin);
-        size_t header_size = roundup(sizeof(Header));
-        size_t sz = roundup(mem_next - mem_begin, IO_BLOCK_SIZE);
+        size_t header_size = round_up(sizeof(Header));
+        size_t sz = round_up(mem_next - mem_begin, IO_BLOCK_SIZE);
 
         char *data_begin = mem_begin + header_size;
         char *data_end = mem_next;

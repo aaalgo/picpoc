@@ -49,9 +49,9 @@ namespace picpoc {
     static_assert(IO_BLOCK_SIZE % HEADER_ALIGN == 0, "alignment");
 
     template <typename T>
-    T roundup (T v, uint32_t bs = HEADER_ALIGN) {
+    T round_up (T v, uint32_t bs = HEADER_ALIGN) {
         return T((v + bs - 1) / bs * bs);
-    };
+    }
 
     /// Image Record
     /**
@@ -123,7 +123,7 @@ namespace picpoc {
         using vector<Record>::end;
 
         size_t packed_size () const {
-            return roundup(mem_next - mem_begin, IO_BLOCK_SIZE);
+            return round_up(mem_next - mem_begin, IO_BLOCK_SIZE);
         }
 
         // construct a new, empty container
