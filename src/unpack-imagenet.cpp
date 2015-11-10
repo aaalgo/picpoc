@@ -59,7 +59,7 @@ int main (int argc, char *argv[]) {
 
     {
         boost::timer::auto_cpu_timer t;
-        DataSet dataset(in_path);
+        DataSet dataset(in_path, 0);
         for (;;) {
             try {
                 Record rec;

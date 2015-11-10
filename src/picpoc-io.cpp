@@ -145,6 +145,7 @@ namespace picpoc {
                 LOG(INFO) << "Found mount " << s << " on device with ID=" << p.first << '.';
             }
         }
+        cpu_dev = lookup[-1];
     }
 
     int IoSched::identify (string const &path) {
