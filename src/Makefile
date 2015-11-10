@@ -7,9 +7,16 @@ LDLIBS += -ljson11 -lopencv_features2d -lopencv_imgcodecs -lopencv_imgproc -lope
 
 COMMON = picpoc.o picpoc-io.o picpoc-shuffle.o
 
-PROGS = load-imagenet unpack-imagenet load-caffe test bench-read test-shuffle dump-labels test-rotate bench-mux-read
+PROGS = load-dir load-imagenet unpack-imagenet load-caffe test bench-read test-shuffle dump-labels test-rotate bench-mux-read
+
+.PHONY:	all release
 
 all:	libpicpoc.a $(PROGS)
+
+release:
+	rm -rf release
+	mkdir -p release
+	for p in $(PROGS) ; do cp $$p release/picpoc-$$p; done
 
 libpicpoc.a:	$(COMMON)
 	ar rvs $@ $^
@@ -20,6 +27,8 @@ test:	test.o libpicpoc.a
 load-imagenet:	load-imagenet.o libpicpoc.a
 
 load-caffe:	load-caffe.o libpicpoc.a
+
+load-dir:	load-dir.o libpicpoc.a
 
 unpack-imagenet:	unpack-imagenet.o libpicpoc.a
 
