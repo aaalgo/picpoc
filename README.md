@@ -54,7 +54,7 @@ Each PicPoc dataset is contained in a directory with multiple sub-directories,
 each containing a number of files with roughly the same size.  For example:
 
 ```
-      DIR  FILES
+      DIRS  FILES
 ROOT - 0 - 0, 1, 2, ...
        |
        1 - 0, 1, 2, ...
@@ -71,6 +71,9 @@ organized as consecutive containers of roughly the same size, each containing
 data of multiple images.  Containers are the disk I/O unit, and are properly
 aligned and padded.  Each container is also CRC-checksumed to ensure data
 integrity.
+
+A (pseudo) global random shuffle is implemented by shuffling each file
+by loading it into memory, followed by transposing the file layout matrix.
 
 # Usage
 
