@@ -82,7 +82,9 @@ Currently there are three ways to import images into a dataset.
 - load-caffe: imports images from a list, like how Caffe's convert_imageset works.
 - load-imagenet: imports ImageNet data, with images of each category stored in a tar file.
 
-## Configure DataMux.
+## Configuring DataMux.
+
+Warning: config file format is subject to change in the near future.
 
 PicPoc's DataSet class supports an easy to use reading/writing API, but for 
 full performance and flexibility, the DataMux class is used.  The user needs to
