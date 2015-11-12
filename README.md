@@ -53,12 +53,14 @@ implemented features include:
 Each PicPoc dataset is contained in a directory with multiple sub-directories,
 each containing a number of files with roughly the same size.  For example:
 
+```
       DIR  FILES
 ROOT - 0 - 0, 1, 2, ...
        |
        1 - 0, 1, 2, ...
        |
        2 - 0, 1, 2, ...
+```
 
 Each subdirectory is considered as a stream.  When data are appended to the
 dataset, they go to the streams in a round-robin fashion.  The data of each
