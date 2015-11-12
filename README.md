@@ -103,6 +103,9 @@ There can be multiple lines in the configuration file.  Each line contains three
   labeled, this column should be set to 0 for all rows.
 - Number of image to read from the dataset in each batch.
 
+With the above configuraton, PicPoc reads data in batches of 100, with 20 from positive
+examples and 80 from negative ones. 
+
 The data reading API is simple.  The following snippet reads the data in a dead loop.
 Each dataset automatically rewinds when the end is reached.
 
