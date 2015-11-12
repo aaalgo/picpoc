@@ -88,8 +88,10 @@ PicPoc's DataSet class supports an easy to use reading/writing API, but for
 full performance and flexibility, the DataMux class is used.  The user needs to
 prepare a configuration file like the one below:
 
+```
 path_to_positive_dataset	1	20
 path_to_negative_dataset	0	80
+```
 
 There can be multiple lines in the configuration file.  Each line contains three fields:
 - Path to the dataset.
