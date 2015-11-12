@@ -474,24 +474,26 @@ namespace picpoc {
     }
 
     void DataMux::prefetch () {
-        Record rec;
+        BufferedRecord rec;
         unsigned off = 0;
         for (auto &src: sources) {
             for (unsigned i = 0; i < src.batch_size; ++i) {
-                for (;;) {
-                    src.dataset->read(&rec);
+                    src.dataset->read_buffered(&rec);
                     batch_prefetch[off].label = rec.meta.label;
-                    cv::Mat buffer(1, rec.image_size, CV_8U, const_cast<void *>(reinterpret_cast<void const *>(rec.image)));
-                    batch_prefetch[off].image = cv::imdecode(buffer, cv::IMREAD_COLOR);
-                    if (batch_prefetch[off].image.total()) {
-                        ++off; break;
-                    }
-                    LOG(WARNING) << "Fail to decode image.";
-                }
+                    batch_prefetch[off].raw.swap(rec.image_buffer);
+                    ++off;
             }
         }
         CHECK(off == batch_prefetch.size());
         std::random_shuffle(batch_prefetch.begin(), batch_prefetch.end());
+        // decode
+#pragma omp parallel for
+        for (unsigned i = 0; i < batch_prefetch.size(); ++i) {
+            auto &sample = batch_prefetch[i];
+            cv::Mat buffer(1, sample.raw.size(), CV_8U, reinterpret_cast<void *>(&sample.raw[0]));
+            sample.image = cv::imdecode(buffer, cv::IMREAD_COLOR);
+            LOG_IF(WARNING, sample.image.total() == 0) << "Fail to decode image.";
+        }
     }
 }
 

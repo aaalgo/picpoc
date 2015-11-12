@@ -91,6 +91,15 @@ namespace picpoc {
         char *save (char *, Record *) const;
     };
 
+    struct BufferedRecord: public Record {
+        string image_buffer;
+        string extra_buffer;
+        void buffer () {
+            image_buffer.assign(image, image_size);
+            extra_buffer.assign(extra, extra_size);
+        }
+    };
+
     /// Container
     /**
      * A container is a chunk of memory backing a bunch of records.
@@ -481,6 +490,11 @@ namespace picpoc {
         void read (Record *);
         void write (Record &, Locator *loc);
 
+        void read_buffered (BufferedRecord *rec) {
+            read(rec);
+            rec->buffer();
+        }
+
         void operator >> (Record &rec) {
             read(&rec);
         }
@@ -498,6 +512,7 @@ namespace picpoc {
 
     struct Sample {
         int label;
+        string raw;
         cv::Mat image;
     };
 

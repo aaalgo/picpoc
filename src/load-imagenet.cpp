@@ -30,6 +30,7 @@ int main (int argc, char *argv[]) {
     unsigned threads;
     int resize;
     int max;
+    int label;
 
     po::options_description desc("Allowed options");
     desc.add_options()
@@ -43,6 +44,7 @@ int main (int argc, char *argv[]) {
     ("threads,t", po::value(&threads)->default_value(0), "")
     ("resize,r", po::value(&resize)->default_value(256), "")
     ("max", po::value(&max)->default_value(0), "")
+    ("label", po::value(&label)->default_value(-1), "")
     ;   
     
     po::positional_options_description p;
@@ -65,7 +67,7 @@ int main (int argc, char *argv[]) {
         string synset;
         while (is >> synset) {
             string path = root + "/" + synset + ".tar";
-            CHECK(boost::filesystem::exists(path)) << path;
+            LOG_IF(ERROR, !boost::filesystem::exists(path)) << "cannot find path " << path;
             tar_paths.push_back(path);
         }
         LOG(INFO) << "Loaded " << tar_paths.size() << " tar paths." << endl;
@@ -84,7 +86,7 @@ int main (int argc, char *argv[]) {
 #pragma omp parallel for
         for (unsigned i = 0; i < tar_paths.size(); ++i) {
             Record rec;
-            rec.meta.label = i;
+            rec.meta.label = label >= 0 ? label : i;
             Tar tar(tar_paths[i]);
             vector<uint8_t> jpeg;
             Tar::posix_header const *header;
