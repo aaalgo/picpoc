@@ -479,7 +479,7 @@ namespace picpoc {
         for (auto &src: sources) {
             for (unsigned i = 0; i < src.batch_size; ++i) {
                     src.dataset->read_buffered(&rec);
-                    batch_prefetch[off].label = rec.meta.label;
+                    batch_prefetch[off].label = rec.meta.label + src.label_base;
                     batch_prefetch[off].raw.swap(rec.image_buffer);
                     ++off;
             }
