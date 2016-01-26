@@ -1,0 +1,50 @@
+CC=g++
+CXX=g++
+CFLAGS += -g -O3
+CXXFLAGS += -Wall -Wno-sign-compare -std=c++1y -fopenmp -g -O3 -pthread -msse4.2
+LDFLAGS += -static -fopenmp
+LDLIBS += -ljson11 -lopencv_ml -lopencv_imgproc -lopencv_highgui -lopencv_core -lboost_timer -lboost_chrono -lboost_program_options -lboost_thread -lboost_filesystem -lboost_system -lopenblas -lturbojpeg -ltiff -lpng -ljasper -lwebp -lglog -lgflags -lunwind -llzma -lz -lm -Wl,--whole-archive -lpthread -Wl,--no-whole-archive -lrt -ldl
+
+COMMON = picpoc.o picpoc-io.o picpoc-shuffle.o
+
+PROGS = load-dir load-imagenet unpack-imagenet load-caffe test bench-read test-shuffle dump-labels test-rotate bench-mux-read load-caffex
+
+.PHONY:	all release
+
+all:	libpicpoc.a $(PROGS)
+
+release:
+	rm -rf release
+	mkdir -p release
+	for p in $(PROGS) ; do cp $$p release/picpoc-$$p; done
+
+libpicpoc.a:	$(COMMON)
+	ar rvs $@ $^
+
+
+test:	test.o libpicpoc.a
+
+load-imagenet:	load-imagenet.o libpicpoc.a
+
+load-caffe:	load-caffe.o libpicpoc.a
+
+load-dir:	load-dir.o libpicpoc.a
+
+unpack-imagenet:	unpack-imagenet.o libpicpoc.a
+
+bench-read:	bench-read.o libpicpoc.a
+
+bench-mux-read:	bench-mux-read.o libpicpoc.a
+
+test-shuffle:	test-shuffle.o libpicpoc.a
+
+test-rotate:	test-rotate.o libpicpoc.a
+
+test-rotate-shuffle:	test-rotate-shuffle.o libpicpoc.a
+
+dump-labels:	dump-labels.o libpicpoc.a
+
+shuffle:	shuffle.o libpicpoc.a
+
+clean:
+	rm *.o test
