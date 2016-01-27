@@ -1,1 +1,1 @@
-Makefile.static
+Makefile.opencv3

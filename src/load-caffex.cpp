@@ -17,6 +17,13 @@ using namespace picpoc;
 namespace fs = boost::filesystem;
 using json11::Json;
 
+// Configurations
+// 0. All categories into a single database
+// 1. All categories into separate databases
+// 2. Category 0 into a database,
+//    all other categories into a single database
+
+// paths under a directory, following symlinks
 class Paths: public vector<fs::path> {
 public:
     Paths () {}
@@ -72,13 +79,15 @@ public:
         }
     }
 
-    void split (Samples *ts, unsigned F) {
+    // move 1/F of the data to a validation set
+    void split (Samples *ts, unsigned F, unsigned cap) {
         ts->resize(size());
         for (unsigned c = 0; c < size(); ++c) {
             auto &in = at(c);
             auto &out = ts->at(c);
             unsigned n = in.size() / F;
-            CHECK(n > 0) << "too many folds, not enough input files";
+            CHECK(n >= 1) << "too many folds, not enough input files";
+            if (n > cap) n = cap;
             for (unsigned i = 0; i < n; ++i) {
                 out.push_back(in.back());
                 in.pop_back();
@@ -86,8 +95,8 @@ public:
         }
     }
 
-    void save_list (fs::path const &p) {
-        fs::ofstream os(p);
+    void append_list (fs::path const &p) {
+        fs::ofstream os(p, ios::app);
         for (unsigned c = 0; c < size(); ++c) {
             for (auto const &path: at(c)) {
                 os << c << '\t' << path.native() << endl;
@@ -95,12 +104,12 @@ public:
         }
     }
 
-    void save_dataset (fs::path const &ds_path, unsigned resize, Geometry const &geom) {
+    void save_dataset (fs::path const &ds_path, unsigned base, unsigned resize, Geometry const &geom) {
         //boost::timer::auto_cpu_timer t;
         vector<Line> lines;
         for (unsigned c = 0; c < size(); ++c) {
             for (auto const &path: at(c)) {
-                lines.emplace_back(c, path);
+                lines.emplace_back(base + c, path);
             }
         }
         random_shuffle(lines.begin(), lines.end());
@@ -142,6 +151,14 @@ public:
     void resample (int s) {
         CHECK(0) << "not implemented.";
     }
+
+    size_t total () const {
+        size_t v = 0;
+        for (auto const &l: *this) {
+            v += l.size();
+        }
+        return v;
+    }
 };
 
 size_t KB = 1024;
@@ -149,7 +166,7 @@ size_t MB = KB * KB;
 size_t GB = MB * KB;
 
 int main (int argc, char *argv[]) {
-    //FLAGS_minloglevel=1;
+    FLAGS_minloglevel=1;
     google::InitGoogleLogging(argv[0]);
     namespace po = boost::program_options; 
     fs::path in_dir;
@@ -161,21 +178,35 @@ int main (int argc, char *argv[]) {
     unsigned F;
     int resample;
     int grouping;
+    int train_batch;
+    int val_batch;
+    int max_val_per_cat;
+    size_t caffe_min_snapshot_images;
+    size_t caffe_max_process_images;
+    size_t caffe_max_passes;
 
     po::options_description desc("Allowed options");
     desc.add_options()
     ("help,h", "produce help message.")
     ("input", po::value(&in_dir), "input directory")
     ("output", po::value(&out_dir), "output directory")
-    ("streams,s", po::value(&streams)->default_value(20), "")
+    ("streams,s", po::value(&streams)->default_value(4), "")
     ("file-gbs,f", po::value(&file_gbs)->default_value(4), "")
-    ("container-mbs,c", po::value(&container_mbs)->default_value(200), "")
+    ("container-mbs,c", po::value(&container_mbs)->default_value(100), "")
     ("resize,r", po::value(&resize)->default_value(256), "")
     ("shuffle", "")
     ("resample", po::value(&resample)->default_value(0), "")
-    ("grouping", po::value(&grouping)->default_value(0), "")
+    ("grouping", po::value(&grouping)->default_value(1), "")
     (",F", po::value(&F)->default_value(10), "")
+    ("train-load", po::value(&train_batch)->default_value(20), "")
+    ("val-load", po::value(&val_batch)->default_value(4), "")
+    ("update-caffex-config,U", "")
+    ("max-val-per-cat", po::value(&max_val_per_cat)->default_value(200), "")
+    ("caffe-max-process-images", po::value(&caffe_max_process_images)->default_value(1000000), "")
+    ("caffe-min-snapshot-images", po::value(&caffe_min_snapshot_images)->default_value(500), "")
+    ("caffe-max-passes", po::value(&caffe_max_passes)->default_value(20), "")
     ;   
+
     
     po::positional_options_description p;
     p.add("input", 1);
@@ -193,47 +224,102 @@ int main (int argc, char *argv[]) {
         return 1;
     }
 
-    Samples train(in_dir);
-    Samples val;
-    train.split(&val, F);
-
-    train.save_list(out_dir/fs::path("train.list"));
-    val.save_list(out_dir/fs::path("val.list"));
-
     if (resample != 0) {
-        train.resample(resample);
+        CHECK(0) << "resampling not implemented";
     }
+
+    Samples all(in_dir);
 
     Geometry geom;
     geom.n_stream = streams;
     geom.file_size = round(file_gbs * GB);
     geom.container_size = round(container_mbs * MB);
 
-    train.save_dataset(out_dir/fs::path("train.pic"), resize, geom);
-    val.save_dataset(out_dir/fs::path("val.pic"), resize, geom);
+    vector<Samples> groups;
+    // groups[] == Samples
+    // groups[][] = Samples[] = Paths
+    // groups[][][] = Samples[][] = Paths[] = fs::path
 
-#if 0
-    for (unsigned c = 0; c < sdir.size(); ++c) {
-        for (auto const &p: sdir[c]) {
-            cerr << c << '\t' << p.native() << endl;
+    if (grouping == 0) {
+        // everything into one group/dataset
+        groups.push_back(std::move(all));
+    }
+    else if (grouping == 1) {
+        // everything into its own group/dataset
+        groups.resize(all.size());
+        for (unsigned i = 0; i < groups.size(); ++i) {
+            groups[i].push_back(std::move(all[i]));
         }
     }
-    vector<Line> lines;
-    {
-        Line line;
-        line.serial = 0;
-        line.label = label;
-        LOG(INFO) << "Loaded " << lines.size() << " lines." << endl;
-        if (list.size()) {
-            ofstream os(list.c_str());
-            for (auto const &l: lines) {
-                os << l.path << '\t' << l.label << endl;
-            }
+    else {
+        groups.resize(2);
+        // category 0 is one group
+        groups[0].push_back(std::move(all[0]));
+        // everything else is one group
+        for (unsigned i = 1; i < all.size(); ++i) {
+            groups[1].push_back(std::move(all[i]));
         }
     }
 
-    if (vm.count("shuffle")) {
-        random_shuffle(lines.begin(), lines.end());
+    fs::ofstream train_mux(out_dir/fs::path("train.mux"));
+    fs::ofstream val_mux(out_dir/fs::path("val.mux"));
+    unsigned base = 0;
+    size_t train_min = 1000000;
+    size_t val_min = 1000000;
+    for (unsigned i = 0; i < groups.size(); ++i) {
+        train_mux << "train" << i << "\t0\t" << train_batch << endl;
+        val_mux << "val" << i << "\t0\t" << val_batch << endl;
+        Samples &train = groups[i];
+        Samples val;
+        train.split(&val, F, max_val_per_cat);
+        train.append_list(out_dir/fs::path("train.list"));
+        val.append_list(out_dir/fs::path("val.list"));
+        train.save_dataset(out_dir/fs::path((format("train%d")%i).str()), base, resize, geom);
+        val.save_dataset(out_dir/fs::path((format("val%d")%i).str()), base, resize, geom);
+        base += train.size();
+        train_min = std::min(train_min, train.total());
+        val_min = std::min(val_min, val.total());
     }
-#endif
+    if (vm.count("update-caffex-config")) {
+        fs::path config_path = out_dir / fs::path("config.json");
+        CHECK(fs::exists(config_path)) << "Cannot find config.json";
+        string text, err;
+        {
+            fs::ifstream is(config_path);
+            is.seekg(0, ios::end);
+            CHECK(is);
+            text.resize(is.tellg());
+            is.seekg(0);
+            is.read(&text[0], text.size());
+            CHECK(is) << "failed reading caffex config";
+        }
+        Json json = Json::parse(text, err);
+        CHECK(err.empty()) << "json parse error: " << err;
+        Json::object fields(json.object_items());
+        fields["train_source"] = "train.mux";
+        fields["val_source"] = "val.mux";
+        int b = json["train_batch"].int_value();
+        // l = #it, so it covers the whole dataset once
+        int l = (train_min * groups.size() + b - 1) / b;
+        if (l < (caffe_min_snapshot_images + b - 1) / b) {
+            l = (caffe_min_snapshot_images + b - 1) / b;
+        }
+        CHECK(l > 0);
+        fields["num_output"] = int(base);
+        fields["val_interval"] = l;
+        fields["snapshot_interval"] = l;
+        int max_it = caffe_max_passes * l;
+        if (max_it * b > caffe_max_process_images) {
+            max_it = caffe_max_process_images / b;
+        }
+        fields["max_iter"] = max_it;
+        b = fields["val_batch"].int_value();
+        l = (val_min * groups.size() + b - 1) / b;
+        fields["val_batches"] = l;
+        Json o_json(fields);
+        text = o_json.dump();
+        fs::ofstream os(config_path);
+        os.write(&text[0], text.size());
+        CHECK(os);
+    }
 }
