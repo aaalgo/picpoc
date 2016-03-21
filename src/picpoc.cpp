@@ -4,7 +4,12 @@
 #include <boost/crc.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/filesystem.hpp>
+#include <opencv2/core/version.hpp>
+#if CV_VERSION_EPOCH==2
+#include <opencv2/highgui/highgui.hpp>
+#elif CV_VERSION_EPOCH==3
 #include <opencv2/imgcodecs.hpp>
+#endif
 #include "picpoc.h"
 
 namespace picpoc {

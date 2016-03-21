@@ -1,1 +1,1 @@
-Makefile.opencv3
+Makefile.shared
