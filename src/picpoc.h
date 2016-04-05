@@ -167,6 +167,10 @@ namespace picpoc {
     };
 
     class IoSched {
+        // represent a storage device
+        // each device should have only one I/O thread
+        // there's a special kind of device called CPU device
+        // which does all other jobs
         class Device {
             std::mutex mutex;
             std::condition_variable cond;
@@ -308,6 +312,7 @@ namespace picpoc {
         int fd;
         size_t index; 
 
+        // Index chunks within a direct file
         class Directory: public vector<uint64_t> {
             struct __attribute__((__packed__)) Header {
                 uint32_t magic;
